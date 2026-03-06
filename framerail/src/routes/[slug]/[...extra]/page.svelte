@@ -54,7 +54,7 @@
       if (!result.data.res.can_edit) {
         errorPopupState.current = {
           state: true,
-          message: "You don't have permission to edit this page",
+          message: "UNTRANSLATED:You don't have permission to edit this page",
           data: null
         }
       } else {

@@ -10,9 +10,12 @@ pub struct Model {
     pub user_id: i64,
     #[sea_orm(primary_key, auto_increment = false)]
     pub role_id: i64,
+    #[serde(with = "time::serde::rfc3339")]
     pub assigned_at: TimeDateTimeWithTimeZone,
     pub assigned_by: i64,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub expires_at: Option<TimeDateTimeWithTimeZone>,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub deleted_at: Option<TimeDateTimeWithTimeZone>,
 }
 

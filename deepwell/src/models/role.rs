@@ -17,7 +17,9 @@ pub struct Model {
     pub implicit: bool,
     pub is_system: bool,
     pub level: i32,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: TimeDateTimeWithTimeZone,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub deleted_at: Option<TimeDateTimeWithTimeZone>,
 }
 

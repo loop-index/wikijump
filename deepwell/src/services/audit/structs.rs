@@ -21,9 +21,9 @@
 use super::prelude::*;
 use crate::license::License;
 use ftml::layout::Layout;
+use sea_orm::prelude::TimeDateTimeWithTimeZone;
 use std::borrow::Cow;
 use std::net::IpAddr;
-use sea_orm::prelude::TimeDateTimeWithTimeZone;
 use time::Date;
 
 // Main structs
@@ -107,29 +107,30 @@ pub enum AuditEvent<'a> {
         site_id: i64,
         role_id: i64,
     },
+    #[allow(dead_code)]
     RoleUpdate {
         role_id: i64,
         updating_user_id: i64,
-        name: String,
-        description: Option<String>,
         level: i32,
         old_permissions: Vec<i64>,
-        new_permissions: Vec<i64>
+        new_permissions: Vec<i64>,
     },
+    #[allow(dead_code)]
     RoleDelete {
         role_id: i64,
-        deleting_user_id: i64
+        deleting_user_id: i64,
     },
     GrantUserRole {
         user_id: i64,
         role_id: i64,
         assigning_user_id: i64,
-        expires_at: Option<TimeDateTimeWithTimeZone>
+        expires_at: Option<TimeDateTimeWithTimeZone>,
     },
+    #[allow(dead_code)]
     RevokeUserRole {
         user_id: i64,
         role_id: i64,
-        revoking_user_id: i64
+        revoking_user_id: i64,
     },
 }
 
@@ -369,14 +370,14 @@ impl<'a> AuditEvent<'a> {
             AuditEvent::RoleUpdate {
                 role_id,
                 updating_user_id,
-                ref name,
-                ref description,
                 level,
                 ref old_permissions,
                 ref new_permissions,
             } => {
-                let old_perms_json = serde_json::to_string(old_permissions).or_raise(make_error)?;
-                let new_perms_json = serde_json::to_string(new_permissions).or_raise(make_error)?;
+                let old_perms_json =
+                    serde_json::to_string(old_permissions).or_raise(make_error)?;
+                let new_perms_json =
+                    serde_json::to_string(new_permissions).or_raise(make_error)?;
 
                 RawAuditEvent {
                     event_type: "role.update",
@@ -390,8 +391,11 @@ impl<'a> AuditEvent<'a> {
                     extra_string_2: Some(Cow::Owned(new_perms_json)),
                     extra_number: Some(level),
                 }
-            },
-            AuditEvent::RoleDelete { role_id, deleting_user_id } => RawAuditEvent {
+            }
+            AuditEvent::RoleDelete {
+                role_id,
+                deleting_user_id,
+            } => RawAuditEvent {
                 event_type: "role.delete",
                 ip_address,
                 user_id: Some(deleting_user_id),

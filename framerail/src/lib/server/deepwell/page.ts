@@ -79,7 +79,7 @@ export async function pageEditPermission(
   siteId: number,
   pageId: Optional<number>,
   slug: string,
-  userId: number,
+  userId: number
 ): Promise<{ can_edit: boolean }> {
   return client.request("page_edit_permission", {
     site_id: siteId,

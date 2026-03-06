@@ -17,8 +17,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-use sea_orm::prelude::TimeDateTimeWithTimeZone;
 use crate::types::Maybe;
+use sea_orm::prelude::TimeDateTimeWithTimeZone;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct CreateRoleInput {
@@ -36,6 +36,7 @@ pub struct CreateRoleOutput {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[allow(dead_code)]
 pub struct UpdateRoleInput {
     pub name: Maybe<String>,
     pub description: Maybe<String>,

@@ -26,6 +26,7 @@ pub struct PermissionInput {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[allow(dead_code)]
 pub struct PermissionOutput {
     pub permission_id: i64,
     pub description: String,

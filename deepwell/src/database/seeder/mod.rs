@@ -33,10 +33,12 @@ use crate::services::file::{
 };
 use crate::services::filter::{CreateFilter, FilterService};
 use crate::services::page::{CreatePage, PageService};
+use crate::services::permission::{PermissionInput, PermissionService};
 use crate::services::relation::{
     PageAttributionEntry, PageAttributionKind, PageAttributionMetadata, RelationService,
     SetPageAttributions,
 };
+use crate::services::role::{CreateRoleInput, GrantUserRoleInput, RoleService};
 use crate::services::site::{CreateSite, CreateSiteOutput, SiteService, UpdateSiteBody};
 use crate::services::user::{CreateUser, CreateUserOutput, UpdateUserBody, UserService};
 use crate::types::{Maybe, Reference};
@@ -50,8 +52,6 @@ use std::fs;
 use std::io::Read;
 use std::net::{IpAddr, Ipv6Addr};
 use std::path::{Path, PathBuf};
-use crate::services::permission::{PermissionInput, PermissionService};
-use crate::services::role::{CreateRoleInput, GrantUserRoleInput, RoleService};
 
 /// The IP address to record for any seeded data.
 pub const SEED_IP_ADDRESS: IpAddr = IpAddr::V6(Ipv6Addr::LOCALHOST);
@@ -185,8 +185,8 @@ pub async fn seed(state: &ServerState) -> Result<()> {
             PermissionInput {
                 description: perm.description,
                 resource_type: perm.resource_type,
-                action: perm.action
-            }
+                action: perm.action,
+            },
         )
         .await
         .or_raise(make_error)?;
@@ -281,34 +281,37 @@ pub async fn seed(state: &ServerState) -> Result<()> {
                     is_system: role_template.is_system,
                     level: role_template.level,
                 },
-                SEED_IP_ADDRESS
-            ).await.or_raise(make_error)?;
+                SEED_IP_ADDRESS,
+            )
+            .await
+            .or_raise(make_error)?;
 
             // Assign permissions to role
             for perm_spec in &role_template.permissions {
                 let parts: Vec<&str> = perm_spec.split(':').collect();
                 if parts.len() != 2 {
-                    warn!("Invalid permission spec '{}', expected 'resource:action'", perm_spec);
+                    warn!(
+                        "Invalid permission spec '{}', expected 'resource:action'",
+                        perm_spec
+                    );
                     continue;
                 }
 
                 // Get permission entry
-                let maybe_permission = PermissionService::get_permission_from_resource_and_action(
-                    &ctx,
-                    &parts[0],
-                    &parts[1]
-                ).await.or_raise(make_error)?;
+                let permission =
+                    PermissionService::get_permission_from_resource_and_action(
+                        &ctx, parts[0], parts[1],
+                    )
+                    .await
+                    .or_raise(make_error)?;
 
-                match maybe_permission {
-                    Some(permission) => {
-                        PermissionService::add_permission_to_role(
-                            &ctx,
-                            role.role_id,
-                            permission.permission_id,
-                        ).await.or_raise(make_error)?;
-                    }
-                    _ => {}
-                };
+                PermissionService::add_permission_to_role(
+                    &ctx,
+                    role.role_id,
+                    permission.permission_id,
+                )
+                .await
+                .or_raise(make_error)?;
             }
 
             // Make test user admin
@@ -326,8 +329,10 @@ pub async fn seed(state: &ServerState) -> Result<()> {
                         assigning_user_id: SYSTEM_USER_ID,
                         expires_at: None,
                     },
-                    SEED_IP_ADDRESS
-                ).await.or_raise(make_error)?;
+                    SEED_IP_ADDRESS,
+                )
+                .await
+                .or_raise(make_error)?;
             }
         }
 

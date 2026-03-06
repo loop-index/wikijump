@@ -30,6 +30,7 @@ use crate::services::page_revision::{
     CreatePageRevisionBody, CreatePageRevisionOutput, CreateResurrectionPageRevision,
     CreateTombstonePageRevision,
 };
+use crate::services::permission::PermissionService;
 use crate::services::{
     CategoryService, FilterService, PageRevisionService, SiteService, TextBlockService,
     TextService,
@@ -40,7 +41,6 @@ use ftml::layout::Layout;
 use ref_map::*;
 use sea_orm::ActiveValue;
 use wikidot_normalize::normalize;
-use crate::services::permission::PermissionService;
 
 #[derive(Debug)]
 pub struct PageService;

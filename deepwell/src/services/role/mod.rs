@@ -23,9 +23,13 @@ mod prelude {
     pub use super::structs::*;
 }
 
+#[allow(dead_code)]
 pub const ADMIN_ROLE_NAME: &str = "admin";
+#[allow(dead_code)]
 pub const MODERATOR_ROLE_NAME: &str = "moderator";
+#[allow(dead_code)]
 pub const MEMBER_ROLE_NAME: &str = "member";
+#[allow(dead_code)]
 pub const GUEST_ROLE_NAME: &str = "guest";
 
 mod service;

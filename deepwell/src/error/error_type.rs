@@ -154,10 +154,13 @@ pub enum ErrorType {
     Permission,
     Role,
     AddRolePermission,
+    #[allow(unused_variables)]
     RemoveRolePermission,
     GrantUserRole,
+    #[allow(unused_variables)]
     RevokeUserRole,
     PermissionNotFound,
+    #[allow(unused_variables)]
     RoleNotFound,
 
     // 4000
@@ -684,7 +687,9 @@ impl ErrorType {
             ErrorType::Permission => "Failed to act on a permission",
             ErrorType::Role => "Failed to act on a role",
             ErrorType::AddRolePermission => "Failed to add a permission to a role",
-            ErrorType::RemoveRolePermission => "Failed to remove a permission from a role",
+            ErrorType::RemoveRolePermission => {
+                "Failed to remove a permission from a role"
+            }
             ErrorType::GrantUserRole => "Failed to grant a role to a user",
             ErrorType::RevokeUserRole => "Failed to revoke a role from a user",
             ErrorType::PermissionNotFound => "Permission not found",
