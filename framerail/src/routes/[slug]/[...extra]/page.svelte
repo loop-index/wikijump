@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state"
   import { goto } from "$app/navigation"
-  import { pageLayoutState } from "$lib/stores.svelte"
+  import { pageLayoutState, errorPopupState } from "$lib/stores.svelte"
   import { Layout, PagePane } from "$lib/types"
   import {
     EditorPane,
@@ -18,6 +18,7 @@
   import type { PageProps } from "./$types"
   import type { Optional } from "$lib/types"
   import type { PageRevisionModelFiltered } from "$lib/server/deepwell/page"
+  import { deserialize } from "$app/forms"
 
   let props: PageProps = $props()
   let { data, params } = $derived(props)
@@ -28,18 +29,49 @@
   let revision = $state<Optional<PageRevisionModelFiltered>>(undefined)
   let pagePaneState = $state<PagePane>(PagePane.None)
 
-  function navigateEdit() {
-    const options: string[] = Object.entries({
-      norender: data.options.no_render,
-      noredirect: data.options.no_redirect,
-      debug: data.options.debug
-    })
-      .filter(([, enabled]) => enabled)
-      .map(([key]) => `/${key}`)
+  async function navigateEdit() {
+    // Check edit permission first
+    const res = await fetch("?/editPermission", {
+      method: "POST",
+      body: JSON.stringify({
+        siteId: page.data.site.site_id,
+        pageId: page.data.page.page_id
+      }),
+    }).then((res) => res.text())
 
-    goto(resolve(`/${params.slug}${options.join("")}/edit`, {}), {
-      noScroll: true
-    })
+    const result = deserialize<
+      { res: { can_edit: boolean } },
+      { message: string; code: string; data: Record<string, unknown> }
+    >(res)
+
+    if (result.type === "failure" && result.data?.message) {
+      errorPopupState.current = {
+        state: true,
+        message: result.data.message,
+        data: result.data
+      }
+    } else if (result.type === "success" && result.data?.res) {
+      if (!result.data.res.can_edit) {
+        errorPopupState.current = {
+          state: true,
+          message: "You don't have permission to edit this page",
+          data: null
+        }
+      } else {
+        // Permission granted, navigate to edit page
+        const options: string[] = Object.entries({
+          norender: data.options.no_render,
+          noredirect: data.options.no_redirect,
+          debug: data.options.debug
+        })
+          .filter(([, enabled]) => enabled)
+          .map(([key]) => `/${key}`)
+
+        goto(resolve(`/${params.slug}${options.join("")}/edit`, {}), {
+          noScroll: true
+        })
+      }
+    }
   }
 
   function setShowRevision(state: boolean) {

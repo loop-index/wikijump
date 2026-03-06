@@ -6,6 +6,7 @@ import {
   pageDelete,
   pageDeletedGet,
   pageEdit,
+  pageEditPermission,
   pageHistory,
   pageLayout,
   pageMove,
@@ -383,6 +384,32 @@ const pageDeleteSchema = variant("option", [
     comments: string()
   })
 ])
+
+/* ----- Page Edit Check Permission ----- */
+export async function pageEditPermissionAction({
+  request,
+  params,
+  cookies
+}: RequestEvent) {
+  const requestData: { siteId: number; pageId: number } =
+    await request.json()
+
+  const sessionToken = cookies.get("wikijump_token")
+  const session = await authGetSession(sessionToken)
+
+  try {
+    const { siteId, pageId } = requestData
+    const { slug } = params
+    const res = await pageEditPermission(siteId, pageId, slug, session?.user_id)
+    return { res }
+  } catch (error) {
+    return fail(500, {
+      message: error.message,
+      code: error.code,
+      data: error.data
+    })
+  }
+}
 
 /* ----- Page Edit ----- */
 export async function pageEditAction({

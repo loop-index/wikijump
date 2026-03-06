@@ -40,6 +40,7 @@ use ftml::layout::Layout;
 use ref_map::*;
 use sea_orm::ActiveValue;
 use wikidot_normalize::normalize;
+use crate::services::permission::PermissionService;
 
 #[derive(Debug)]
 pub struct PageService;
@@ -1236,6 +1237,18 @@ impl PageService {
         raise_multiple!(result1, result2, result3; make_error);
 
         Ok(())
+    }
+
+    pub async fn check_user_permission(
+        ctx: &ServiceContext<'_>,
+        site_id: i64,
+        user_id: i64,
+        action: &str,
+    ) -> Result<bool> {
+        // TODO: Additional logic for per-category permissions here...
+        PermissionService::check_user_can(ctx, user_id, site_id, "page", action)
+            .await
+            .or_raise(|| Error::new("permission check failed", ErrorType::Page))
     }
 }
 

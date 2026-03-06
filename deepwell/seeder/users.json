@@ -104,5 +104,22 @@
             "demo",
             "demo-user"
         ]
+    },
+    {
+        "id": 6,
+        "type": "regular",
+        "name": "Guest",
+        "slug": "guest",
+        "email": "guest@wikijump",
+        "password": "guestuser1",
+        "locales": ["en"],
+        "real_name": "Guest",
+        "gender": null,
+        "birthday": null,
+        "location": "Everywhere and nowhere",
+        "biography": "Wikijump guest user",
+        "user_page": null,
+        "aliases": [
+        ]
     }
 ]

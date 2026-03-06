@@ -21,11 +21,14 @@ use super::prelude::*;
 use crate::models::permission::{self, Model as PermissionModel};
 use crate::models::role::Model as RoleModel;
 use crate::models::role_permission::Model as RolePermissionModel;
+use crate::models::{role, user_role};
+use crate::models::prelude::UserRole;
 use crate::error::{Error, ErrorType};
 use crate::error::ErrorType::Permission;
 use crate::models::prelude::RolePermission;
 use crate::models::role_permission;
 use crate::services::audit::{AuditEvent, AuditService};
+use crate::services::role::RoleService;
 use crate::services::ServiceContext;
 
 #[derive(Debug)]
@@ -141,6 +144,97 @@ impl PermissionService {
         let permission_ids = role_permissions.iter().map(|perm| perm.permission_id).collect();
         
         Ok(permission_ids)
+    }
+
+    pub async fn check_user_has_permission(
+        ctx: &ServiceContext<'_>,
+        user_id: i64,
+        site_id: i64,
+        permission_id: i64,
+    ) -> Result<bool> {
+        let txn = ctx.transaction();
+
+        let make_error = || Error::new(
+            format!("failed to check user ID {} for permission ID {}", user_id, permission_id),
+            ErrorType::Permission,
+        );
+
+        // Get all the roles the user has for this site
+        let mut role_ids: Vec<i64> = UserRole::find()
+            .join(
+                JoinType::InnerJoin,
+                user_role::Relation::Role.def(),
+            )
+            .filter(
+                Condition::all()
+                    .add(user_role::Column::UserId.eq(user_id))
+                    .add(role::Column::SiteId.eq(site_id))
+            )
+            .all(txn)
+            .await
+            .or_raise(make_error)?
+            .into_iter()
+            .map(|ur| ur.role_id)
+            .collect();
+
+        // If the user has no roles, apply implicit "guest" role
+        if role_ids.is_empty() {
+            let guest_role = RoleService::get_guest_role_for_site(
+                ctx,
+                site_id,
+            ).await.or_raise(make_error)?;
+            
+            role_ids.push(guest_role.role_id);
+        }
+
+        // Check if any of those roles have the permission
+        let exists = RolePermission::find()
+            .filter(role_permission::Column::RoleId.is_in(role_ids))
+            .filter(role_permission::Column::PermissionId.eq(permission_id))
+            .one(txn)
+            .await
+            .or_raise(make_error)?
+            .is_some();
+
+        Ok(exists)
+    }
+
+    pub async fn check_user_can(
+        ctx: &ServiceContext<'_>,
+        user_id: i64,
+        site_id: i64,
+        resource_type: &str,
+        action: &str,
+    ) -> Result<bool> {
+        let make_error = || Error::new(
+            format!(
+                "failed to check if user ID {} can {} {}",
+                user_id, action, resource_type
+            ),
+            ErrorType::Permission,
+        );
+
+        let maybe_permission = Self::get_permission_from_resource_and_action(
+            ctx,
+            resource_type,
+            action,
+        )
+        .await
+        .or_raise(make_error)?;
+
+        match maybe_permission {
+            Some(permission) => {
+                Self::check_user_has_permission(
+                    ctx,
+                    user_id,
+                    site_id,
+                    permission.permission_id,
+                )
+                .await
+                .or_raise(make_error)
+            }
+            None => Ok(false),
+        }
     }
 
     pub async fn get_optional(

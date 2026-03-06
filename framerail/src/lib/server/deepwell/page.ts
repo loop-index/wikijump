@@ -75,6 +75,19 @@ export async function pageEdit(
   })
 }
 
+export async function pageEditPermission(
+  siteId: number,
+  pageId: Optional<number>,
+  slug: string,
+  userId: number,
+): Promise<{ can_edit: boolean }> {
+  return client.request("page_edit_permission", {
+    site_id: siteId,
+    page: pageId ?? slug,
+    user_id: userId
+  })
+}
+
 /* ----- Page History ----- */
 export interface PageRevisionModelFiltered {
   revision_id: number

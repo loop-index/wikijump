@@ -23,6 +23,11 @@ mod prelude {
     pub use super::structs::*;
 }
 
+pub const ADMIN_ROLE_NAME: &str = "admin";
+pub const MODERATOR_ROLE_NAME: &str = "moderator";
+pub const MEMBER_ROLE_NAME: &str = "member";
+pub const GUEST_ROLE_NAME: &str = "guest";
+
 mod service;
 mod structs;
 

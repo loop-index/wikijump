@@ -4,6 +4,7 @@ import {
   pageDeleteAction,
   pageDeletedGetAction,
   pageEditAction,
+  pageEditPermissionAction,
   pageFileDeleteAction,
   pageFileEditAction,
   pageFileHistoryAction,
@@ -31,6 +32,7 @@ export async function load({ params, request, cookies }) {
 export const actions = {
   delete: pageDeleteAction,
   edit: pageEditAction,
+  editPermission: pageEditPermissionAction,
   fileList: pageFileListAction,
   fileUpload: pageFileUploadAction,
   fileDelete: pageFileDeleteAction,

@@ -28,6 +28,7 @@ use crate::services::page::{
     GetDeletedPageOutput, GetPageAnyDetails, GetPageOutput, GetPageReference,
     GetPageReferenceDetails, GetPageScoreOutput, GetPageSlug, MovePage, MovePageOutput,
     RestorePage, RestorePageOutput, RollbackPage, SetPageLayout,
+    PageEditPermission, PageEditPermissionOutput,
 };
 use crate::services::page_revision::RerenderType;
 use crate::types::{Bytes, FileOrder, PageDetails, PageId, Reference, RerenderDepth};
@@ -205,6 +206,26 @@ pub async fn page_edit(
     PageService::edit(ctx, input)
         .await
         .or_raise(|| Error::new("failed to edit page", ErrorType::Page))
+}
+
+pub async fn page_edit_permission(
+    ctx: &ServiceContext<'_>,
+    params: Params<'static>,
+) -> Result<PageEditPermissionOutput> {
+    let input: PageEditPermission = parse!(params, Page);
+    info!(
+        "Checking edit permission for page {:?} in site ID {}",
+        input.page, input.site_id,
+    );
+
+    let can_edit = PageService::check_user_permission(
+        &ctx,
+        input.site_id,
+        input.user_id,
+        "edit"
+    ).await.or_raise(|| Error::new("failed to check edit permission", ErrorType::Page))?;
+    
+    Ok(PageEditPermissionOutput { can_edit })
 }
 
 pub async fn page_delete(

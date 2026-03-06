@@ -28,6 +28,7 @@ use crate::error::{Error, ErrorType};
 use crate::models::user_role;
 use crate::services::audit::{AuditEvent, AuditService};
 use crate::services::permission::PermissionService;
+use crate::services::role::GUEST_ROLE_NAME;
 use crate::services::ServiceContext;
 
 #[derive(Debug)]
@@ -344,5 +345,21 @@ impl RoleService {
         ).await.or_raise(make_error)?;
         
         Ok(deleted_user_role)
+    }
+
+    pub async fn get_guest_role_for_site(
+        ctx: &ServiceContext<'_>,
+        site_id: i64,
+    ) -> Result<RoleModel> {
+        let txn = ctx.transaction();
+
+        let make_error = || Error::new("failed to get guest role", ErrorType::Role);
+
+        let role = Role::find()
+            .filter(role::Column::SiteId.eq(site_id).and(role::Column::Name.eq(GUEST_ROLE_NAME)))
+            .one(txn)
+            .await.or_raise(make_error)?;
+
+        Ok(role.unwrap())
     }
 }
