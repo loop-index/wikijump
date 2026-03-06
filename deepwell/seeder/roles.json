@@ -1,0 +1,56 @@
+[
+    {
+        "name": "admin",
+        "description": "Site administrator with full control",
+        "implicit": false,
+        "is-system": true,
+        "level": 99,
+        "permissions": [
+            "page:view",
+            "page:edit",
+            "page:create",
+            "page:delete",
+            "page:rename",
+            "role:view",
+            "role:assign",
+            "role:remove"
+        ]
+    },
+    {
+        "name": "moderator",
+        "description": "Site moderator with full control over pages",
+        "implicit": false,
+        "is-system": true,
+        "level": 90,
+        "permissions": [
+            "page:view",
+            "page:edit",
+            "page:create",
+            "page:delete",
+            "role:view"
+        ]
+    },
+    {
+        "name": "member",
+        "description": "Regular site member",
+        "implicit": false,
+        "is-system": true,
+        "level": 10,
+        "permissions": [
+            "page:view",
+            "page:edit",
+            "page:create"
+        ]
+    },
+    {
+        "name": "guest",
+        "description": "Implicit role for all visitors (including non-members)",
+        "implicit": true,
+        "is-system": true,
+        "level": 1,
+        "permissions": [
+            "page:view"
+        ]
+    }
+]
+

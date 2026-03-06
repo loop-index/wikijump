@@ -50,6 +50,8 @@ use std::fs;
 use std::io::Read;
 use std::net::{IpAddr, Ipv6Addr};
 use std::path::{Path, PathBuf};
+use crate::services::permission::{PermissionInput, PermissionService};
+use crate::services::role::{CreateRoleInput, GrantUserRoleInput, RoleService};
 
 /// The IP address to record for any seeded data.
 pub const SEED_IP_ADDRESS: IpAddr = IpAddr::V6(Ipv6Addr::LOCALHOST);
@@ -96,6 +98,8 @@ pub async fn seed(state: &ServerState) -> Result<()> {
         pages,
         files,
         filters,
+        permissions,
+        roles,
     } = SeedData::load(&state.config.seeder_path).or_raise(make_error)?;
 
     let mut user_aliases = Vec::new();
@@ -172,6 +176,22 @@ pub async fn seed(state: &ServerState) -> Result<()> {
         }
     }
 
+    // Seed permissions (platform-wide)
+    for perm in permissions {
+        info!("Creating permission {}.{}", perm.resource_type, perm.action);
+
+        PermissionService::create(
+            &ctx,
+            PermissionInput {
+                description: perm.description,
+                resource_type: perm.resource_type,
+                action: perm.action
+            }
+        )
+        .await
+        .or_raise(make_error)?;
+    }
+
     // Seed site data
     let mut site_ids = HashMap::new();
     for site in sites {
@@ -246,6 +266,70 @@ pub async fn seed(state: &ServerState) -> Result<()> {
         )
         .await
         .or_raise(make_error)?;
+
+        // Create system roles for site
+        info!("Creating roles for site '{}'", site_id);
+
+        for role_template in &roles {
+            let role = RoleService::create(
+                &ctx,
+                CreateRoleInput {
+                    site_id,
+                    name: role_template.name.clone(),
+                    description: Some(role_template.description.clone()),
+                    implicit: role_template.implicit,
+                    is_system: role_template.is_system,
+                    level: role_template.level,
+                },
+                SEED_IP_ADDRESS
+            ).await.or_raise(make_error)?;
+
+            // Assign permissions to role
+            for perm_spec in &role_template.permissions {
+                let parts: Vec<&str> = perm_spec.split(':').collect();
+                if parts.len() != 2 {
+                    warn!("Invalid permission spec '{}', expected 'resource:action'", perm_spec);
+                    continue;
+                }
+
+                // Get permission entry
+                let maybe_permission = PermissionService::get_permission_from_resource_and_action(
+                    &ctx,
+                    &parts[0],
+                    &parts[1]
+                ).await.or_raise(make_error)?;
+
+                match maybe_permission {
+                    Some(permission) => {
+                        PermissionService::add_permission_to_role(
+                            &ctx,
+                            role.role_id,
+                            permission.permission_id,
+                        ).await.or_raise(make_error)?;
+                    }
+                    _ => {}
+                };
+            }
+
+            // Make test user admin
+            // TODO: remove in prod
+            if role_template.name == "admin" {
+                let user = UserService::get(&ctx, Reference::from(ADMIN_USER_ID))
+                    .await
+                    .or_raise(make_error)?;
+
+                RoleService::grant_role_to_user(
+                    &ctx,
+                    GrantUserRoleInput {
+                        user_id: user.user_id,
+                        role_id: role.role_id,
+                        assigning_user_id: SYSTEM_USER_ID,
+                        expires_at: None,
+                    },
+                    SEED_IP_ADDRESS
+                ).await.or_raise(make_error)?;
+            }
+        }
 
         site_ids.insert(slug, site_id);
     }

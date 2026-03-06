@@ -150,6 +150,16 @@ pub enum ErrorType {
     EmptyPassword,
     InvalidAuthorizationToken,
 
+    // 3100
+    Permission,
+    Role,
+    AddRolePermission,
+    RemoveRolePermission,
+    GrantUserRole,
+    RevokeUserRole,
+    PermissionNotFound,
+    RoleNotFound,
+
     // 4000
     BadRequest,
 
@@ -419,7 +429,14 @@ impl ErrorType {
             ErrorType::InvalidAuthorizationToken => 3006,
 
             // 3100 - Permissions
-            // TODO
+            ErrorType::Permission => 3100,
+            ErrorType::Role => 3101,
+            ErrorType::AddRolePermission => 3102,
+            ErrorType::RemoveRolePermission => 3103,
+            ErrorType::GrantUserRole => 3104,
+            ErrorType::RevokeUserRole => 3105,
+            ErrorType::PermissionNotFound => 3106,
+            ErrorType::RoleNotFound => 3107,
 
             //
             // 4000, 5000, 6000 -- Client / Request Errors
@@ -662,6 +679,16 @@ impl ErrorType {
             ErrorType::InvalidAuthorizationToken => {
                 "Provided authorization token was invalid"
             }
+
+            // 3100
+            ErrorType::Permission => "Failed to act on a permission",
+            ErrorType::Role => "Failed to act on a role",
+            ErrorType::AddRolePermission => "Failed to add a permission to a role",
+            ErrorType::RemoveRolePermission => "Failed to remove a permission from a role",
+            ErrorType::GrantUserRole => "Failed to grant a role to a user",
+            ErrorType::RevokeUserRole => "Failed to revoke a role from a user",
+            ErrorType::PermissionNotFound => "Permission not found",
+            ErrorType::RoleNotFound => "Role not found",
 
             // 4000
             ErrorType::BadRequest => "The request is in some way malformed or incorrect",

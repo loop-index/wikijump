@@ -23,6 +23,7 @@ use crate::license::License;
 use ftml::layout::Layout;
 use std::borrow::Cow;
 use std::net::IpAddr;
+use sea_orm::prelude::TimeDateTimeWithTimeZone;
 use time::Date;
 
 // Main structs
@@ -101,6 +102,34 @@ pub enum AuditEvent<'a> {
         site_id: i64,
         page_id: i64,
         layout: Option<Layout>,
+    },
+    RoleCreate {
+        site_id: i64,
+        role_id: i64,
+    },
+    RoleUpdate {
+        role_id: i64,
+        updating_user_id: i64,
+        name: String,
+        description: Option<String>,
+        level: i32,
+        old_permissions: Vec<i64>,
+        new_permissions: Vec<i64>
+    },
+    RoleDelete {
+        role_id: i64,
+        deleting_user_id: i64
+    },
+    GrantUserRole {
+        user_id: i64,
+        role_id: i64,
+        assigning_user_id: i64,
+        expires_at: Option<TimeDateTimeWithTimeZone>
+    },
+    RevokeUserRole {
+        user_id: i64,
+        role_id: i64,
+        revoking_user_id: i64
     },
 }
 
@@ -322,6 +351,88 @@ impl<'a> AuditEvent<'a> {
                 extra_id_1: None,
                 extra_id_2: None,
                 extra_string_1: layout.map(|l| cow!(l.value())),
+                extra_string_2: None,
+                extra_number: None,
+            },
+            AuditEvent::RoleCreate { site_id, role_id } => RawAuditEvent {
+                event_type: "role.create",
+                ip_address,
+                user_id: None,
+                site_id: Some(site_id),
+                page_id: None,
+                extra_id_1: Some(role_id),
+                extra_id_2: None,
+                extra_string_1: None,
+                extra_string_2: None,
+                extra_number: None,
+            },
+            AuditEvent::RoleUpdate {
+                role_id,
+                updating_user_id,
+                ref name,
+                ref description,
+                level,
+                ref old_permissions,
+                ref new_permissions,
+            } => {
+                let old_perms_json = serde_json::to_string(old_permissions).or_raise(make_error)?;
+                let new_perms_json = serde_json::to_string(new_permissions).or_raise(make_error)?;
+
+                RawAuditEvent {
+                    event_type: "role.update",
+                    ip_address,
+                    user_id: Some(updating_user_id),
+                    site_id: None,
+                    page_id: None,
+                    extra_id_1: Some(role_id),
+                    extra_id_2: None,
+                    extra_string_1: Some(Cow::Owned(old_perms_json)),
+                    extra_string_2: Some(Cow::Owned(new_perms_json)),
+                    extra_number: Some(level),
+                }
+            },
+            AuditEvent::RoleDelete { role_id, deleting_user_id } => RawAuditEvent {
+                event_type: "role.delete",
+                ip_address,
+                user_id: Some(deleting_user_id),
+                site_id: None,
+                page_id: None,
+                extra_id_1: Some(role_id),
+                extra_id_2: None,
+                extra_string_1: None,
+                extra_string_2: None,
+                extra_number: None,
+            },
+            AuditEvent::GrantUserRole {
+                user_id,
+                role_id,
+                assigning_user_id,
+                expires_at,
+            } => RawAuditEvent {
+                event_type: "user_role.grant",
+                ip_address,
+                user_id: Some(assigning_user_id),
+                site_id: None,
+                page_id: None,
+                extra_id_1: Some(user_id),
+                extra_id_2: Some(role_id),
+                extra_string_1: expires_at.map(|dt| Cow::Owned(dt.to_string())),
+                extra_string_2: None,
+                extra_number: None,
+            },
+            AuditEvent::RevokeUserRole {
+                user_id,
+                role_id,
+                revoking_user_id,
+            } => RawAuditEvent {
+                event_type: "user_role.revoke",
+                ip_address,
+                user_id: Some(revoking_user_id),
+                site_id: None,
+                page_id: None,
+                extra_id_1: Some(user_id),
+                extra_id_2: Some(role_id),
+                extra_string_1: None,
                 extra_string_2: None,
                 extra_number: None,
             },

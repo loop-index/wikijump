@@ -1,0 +1,42 @@
+[
+    {
+        "description": "Can view and read pages",
+        "resource-type": "page",
+        "action": "view"
+    },
+    {
+        "description": "Can edit existing pages",
+        "resource-type": "page",
+        "action": "edit"
+    },
+    {
+        "description": "Can create new pages",
+        "resource-type": "page",
+        "action": "create"
+    },
+    {
+        "description": "Can delete pages",
+        "resource-type": "page",
+        "action": "delete"
+    },
+    {
+        "description": "Can rename/move pages",
+        "resource-type": "page",
+        "action": "rename"
+    },
+    {
+        "description": "Can view role assignments",
+        "resource-type": "role",
+        "action": "view"
+    },
+    {
+        "description": "Can assign roles to users",
+        "resource-type": "role",
+        "action": "assign"
+    },
+    {
+        "description": "Can remove roles from users",
+        "resource-type": "role",
+        "action": "remove"
+    }
+]
