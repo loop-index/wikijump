@@ -957,6 +957,74 @@ CREATE INDEX forum_post_latest_revision_idx ON forum_post (latest_revision_id);
 CREATE INDEX forum_post_revision_lookup_idx ON forum_post_revision (forum_post_id, revision_number DESC);
 
 --
+-- Role / permission system
+--
+
+-- Lookup table for permissions. This is shared across all sites.
+CREATE TABLE permission (
+    permission_id BIGSERIAL PRIMARY KEY,
+    description TEXT NOT NULL,
+    resource_type TEXT NOT NULL,
+    action TEXT NOT NULL,
+
+    UNIQUE (resource_type, action)
+);
+
+-- Roles in a site.
+CREATE TABLE role (
+    role_id BIGSERIAL PRIMARY KEY,
+
+    -- A role entry denotes a unique role in a site. A user maybe an admin in one site but not in another.
+    site_id BIGINT NOT NULL REFERENCES site(site_id),
+    name TEXT NOT NULL,
+    description TEXT,
+    from_wikidot BOOLEAN NOT NULL DEFAULT false,
+
+    -- Implicit roles are invisible to the user, granted by the system under specific conditions
+    -- i.e. Guest role granted when a non-member visits the site,
+    -- or Author role granted when a user interacts with a page they authored.
+    -- Implicit roles are visible to admins where they can select the role's permissions.
+    -- Implicit roles cannot be manually assigned..
+    implicit BOOLEAN NOT NULL DEFAULT false,
+
+    -- System roles cannot be deleted (i.e. Admin)
+    is_system BOOLEAN NOT NULL DEFAULT false,
+
+    -- Rudimentary role hierarchy.
+    -- Roles with higher level are granted more permissions than roles with lower levels.
+    -- Users with role management permissions can only grant roles with lower levels and affect users of lower levels.
+    level INTEGER NOT NULL CHECK (level >= 0),
+
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
+
+    UNIQUE (site_id, name)
+);
+
+-- Role permissions (many-to-many)
+CREATE TABLE role_permission (
+    role_id BIGINT NOT NULL REFERENCES role(role_id),
+    permission_id BIGINT NOT NULL REFERENCES permission(permission_id),
+    PRIMARY KEY (role_id, permission_id)
+);
+
+-- User role assignments (many-to-many)
+CREATE TABLE user_role (
+    user_id BIGINT NOT NULL REFERENCES "user"(user_id),
+    role_id BIGINT NOT NULL REFERENCES role(role_id),
+
+    assigned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    assigned_by BIGINT NOT NULL REFERENCES "user"(user_id),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    PRIMARY KEY (user_id, role_id)
+);
+
+-- Index for permission lookup.
+CREATE UNIQUE INDEX permission_resource_action_idx ON permission
+    (resource_type, action);
+
+--
 -- Audit Log
 --
 

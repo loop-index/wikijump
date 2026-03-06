@@ -9,11 +9,8 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub site_id: i64,
-    #[serde(with = "time::serde::rfc3339")]
     pub created_at: TimeDateTimeWithTimeZone,
-    #[serde(with = "time::serde::rfc3339::option")]
     pub updated_at: Option<TimeDateTimeWithTimeZone>,
-    #[serde(with = "time::serde::rfc3339::option")]
     pub deleted_at: Option<TimeDateTimeWithTimeZone>,
     pub from_wikidot: bool,
     #[sea_orm(column_type = "Text")]
@@ -67,6 +64,8 @@ pub enum Relation {
     PageConnectionMissing,
     #[sea_orm(has_many = "super::page_revision::Entity")]
     PageRevision,
+    #[sea_orm(has_many = "super::role::Entity")]
+    Role,
     #[sea_orm(has_many = "super::site_domain::Entity")]
     SiteDomain,
     #[sea_orm(
@@ -154,6 +153,12 @@ impl Related<super::page_connection_missing::Entity> for Entity {
 impl Related<super::page_revision::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::PageRevision.def()
+    }
+}
+
+impl Related<super::role::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Role.def()
     }
 }
 
