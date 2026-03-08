@@ -79,6 +79,8 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     SiteDomainPreferredDomain,
+    #[sea_orm(has_many = "super::user_role::Entity")]
+    UserRole,
 }
 
 impl Related<super::file::Entity> for Entity {
@@ -168,6 +170,12 @@ impl Related<super::role::Entity> for Entity {
 impl Related<super::site_domain::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::SiteDomain.def()
+    }
+}
+
+impl Related<super::user_role::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserRole.def()
     }
 }
 

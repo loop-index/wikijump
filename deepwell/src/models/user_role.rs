@@ -10,6 +10,7 @@ pub struct Model {
     pub user_id: i64,
     #[sea_orm(primary_key, auto_increment = false)]
     pub role_id: i64,
+    pub site_id: i64,
     #[serde(with = "time::serde::rfc3339")]
     pub assigned_at: TimeDateTimeWithTimeZone,
     pub assigned_by: i64,
@@ -29,6 +30,14 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Role,
+    #[sea_orm(
+        belongs_to = "super::site::Entity",
+        from = "Column::SiteId",
+        to = "super::site::Column::SiteId",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    Site,
     #[sea_orm(
         belongs_to = "super::user::Entity",
         from = "Column::AssignedBy",
@@ -50,6 +59,12 @@ pub enum Relation {
 impl Related<super::role::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Role.def()
+    }
+}
+
+impl Related<super::site::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Site.def()
     }
 }
 

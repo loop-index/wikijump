@@ -277,7 +277,7 @@ pub async fn seed(state: &ServerState) -> Result<()> {
                     site_id,
                     name: role_template.name.clone(),
                     description: Some(role_template.description.clone()),
-                    implicit: role_template.implicit,
+                    is_virtual: role_template.is_virtual,
                     is_system: role_template.is_system,
                     level: role_template.level,
                 },

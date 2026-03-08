@@ -191,7 +191,7 @@ impl PermissionService {
             .map(|ur| ur.role_id)
             .collect();
 
-        // If the user has no roles, apply implicit "guest" role
+        // If the user has no roles, apply virtual "guest" role
         if role_ids.is_empty() {
             let guest_role = RoleService::get_guest_role_for_site(ctx, site_id)
                 .await

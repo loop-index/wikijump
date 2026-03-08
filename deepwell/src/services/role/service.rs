@@ -42,7 +42,7 @@ impl RoleService {
             site_id,
             name,
             description,
-            implicit,
+            is_virtual,
             is_system,
             level,
         }: CreateRoleInput,
@@ -63,11 +63,12 @@ impl RoleService {
         let model = role::ActiveModel {
             site_id: Set(site_id),
             name: Set(name.clone()),
-            description: Set(description.clone()),
-            implicit: Set(implicit),
+            description: Set(description.clone().unwrap_or_default()),
+            is_virtual: Set(is_virtual),
             is_system: Set(is_system),
             level: Set(level),
             created_at: Set(now),
+            updated_at: Set(Some(now)),
             ..Default::default()
         };
 
@@ -100,6 +101,7 @@ impl RoleService {
 
         let mut model = role::ActiveModel {
             role_id: Set(role.role_id),
+            updated_at: Set(Some(now())),
             ..Default::default()
         };
 
@@ -119,7 +121,7 @@ impl RoleService {
         }
 
         if let Maybe::Set(description_val) = &description {
-            model.description = Set(description_val.clone().into());
+            model.description = Set(description_val.clone());
         }
 
         if let Maybe::Set(level_val) = level {
@@ -267,9 +269,12 @@ impl RoleService {
             )
         };
 
+        let role = Self::get(ctx, role_id.into()).await?;
+
         let user_role = user_role::ActiveModel {
             user_id: Set(user_id),
-            role_id: Set(role_id),
+            role_id: Set(role.role_id),
+            site_id: Set(role.site_id),
             assigned_at: Set(now()),
             assigned_by: Set(assigning_user_id),
             expires_at: Set(expires_at),

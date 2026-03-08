@@ -25,7 +25,7 @@ pub struct CreateRoleInput {
     pub site_id: i64,
     pub name: String,
     pub description: Option<String>,
-    pub implicit: bool,
+    pub is_virtual: bool,
     pub is_system: bool,
     pub level: i32,
 }

@@ -974,18 +974,18 @@ CREATE TABLE permission (
 CREATE TABLE role (
     role_id BIGSERIAL PRIMARY KEY,
 
-    -- A role entry denotes a unique role in a site. A user maybe an admin in one site but not in another.
+    -- Denotes a unique role in a site. A user may be an admin in one site but a regular site member in another.
     site_id BIGINT NOT NULL REFERENCES site(site_id),
     name TEXT NOT NULL,
-    description TEXT,
+    description TEXT NOT NULL,
     from_wikidot BOOLEAN NOT NULL DEFAULT false,
 
-    -- Implicit roles are invisible to the user, granted by the system under specific conditions
+    -- Virtual roles are invisible to the user, granted by the system under specific conditions
     -- i.e. Guest role granted when a non-member visits the site,
     -- or Author role granted when a user interacts with a page they authored.
-    -- Implicit roles are visible to admins where they can select the role's permissions.
-    -- Implicit roles cannot be manually assigned..
-    implicit BOOLEAN NOT NULL DEFAULT false,
+    -- Virtual roles are visible to admins where they can select the role's permissions.
+    -- Virtual roles cannot be manually assigned.
+    is_virtual BOOLEAN NOT NULL DEFAULT false,
 
     -- System roles cannot be deleted (i.e. Admin)
     is_system BOOLEAN NOT NULL DEFAULT false,
@@ -996,6 +996,7 @@ CREATE TABLE role (
     level INTEGER NOT NULL CHECK (level >= 0),
 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE,
     deleted_at TIMESTAMP WITH TIME ZONE,
 
     UNIQUE (site_id, name)
@@ -1012,6 +1013,8 @@ CREATE TABLE role_permission (
 CREATE TABLE user_role (
     user_id BIGINT NOT NULL REFERENCES "user"(user_id),
     role_id BIGINT NOT NULL REFERENCES role(role_id),
+    -- Denormalized FK to avoid a join.
+    site_id BIGINT NOT NULL REFERENCES site(site_id),
 
     assigned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
     assigned_by BIGINT NOT NULL REFERENCES "user"(user_id),

@@ -11,14 +11,16 @@ pub struct Model {
     pub site_id: i64,
     #[sea_orm(column_type = "Text")]
     pub name: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub description: Option<String>,
+    #[sea_orm(column_type = "Text")]
+    pub description: String,
     pub from_wikidot: bool,
-    pub implicit: bool,
+    pub is_virtual: bool,
     pub is_system: bool,
     pub level: i32,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: TimeDateTimeWithTimeZone,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub updated_at: Option<TimeDateTimeWithTimeZone>,
     #[serde(with = "time::serde::rfc3339::option")]
     pub deleted_at: Option<TimeDateTimeWithTimeZone>,
 }
