@@ -41,7 +41,7 @@ use crate::services::relation::{
 use crate::services::role::{CreateRoleInput, GrantUserRoleInput, RoleService};
 use crate::services::site::{CreateSite, CreateSiteOutput, SiteService, UpdateSiteBody};
 use crate::services::user::{CreateUser, CreateUserOutput, UpdateUserBody, UserService};
-use crate::types::{Maybe, Reference};
+use crate::types::{Maybe, PermissionKey, PermissionReference, Reference};
 use crate::utils::now;
 use sea_orm::{
     ConnectionTrait, DatabaseBackend, DatabaseTransaction, Statement, TransactionTrait,
@@ -288,22 +288,20 @@ pub async fn seed(state: &ServerState) -> Result<()> {
 
             // Assign permissions to role
             for perm_spec in &role_template.permissions {
-                let parts: Vec<&str> = perm_spec.split(':').collect();
-                if parts.len() != 2 {
-                    warn!(
-                        "Invalid permission spec '{}', expected 'resource:action'",
-                        perm_spec
-                    );
-                    continue;
-                }
+                let permission = perm_spec
+                    .parse::<PermissionKey>()
+                    .map_err(|_| make_error())?;
 
                 // Get permission entry
-                let permission =
-                    PermissionService::get_permission_from_resource_and_action(
-                        &ctx, parts[0], parts[1],
-                    )
-                    .await
-                    .or_raise(make_error)?;
+                let permission = PermissionService::get(
+                    &ctx,
+                    PermissionReference::ResourceAction(
+                        permission.resource,
+                        permission.action,
+                    ),
+                )
+                .await
+                .or_raise(make_error)?;
 
                 PermissionService::add_permission_to_role(
                     &ctx,
@@ -323,6 +321,7 @@ pub async fn seed(state: &ServerState) -> Result<()> {
 
                 RoleService::grant_role_to_user(
                     &ctx,
+                    site_id,
                     GrantUserRoleInput {
                         user_id: user.user_id,
                         role_id: role.role_id,

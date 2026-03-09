@@ -18,18 +18,18 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 use super::prelude::*;
-use crate::error::ErrorType::Permission;
 use crate::error::{Error, ErrorType};
-use crate::models::permission::{self, Model as PermissionModel};
-use crate::models::prelude::RolePermission;
+use crate::models::permission::{self, Entity as Permission, Model as PermissionModel};
 use crate::models::prelude::UserRole;
+use crate::models::prelude::{Role, RolePermission};
 use crate::models::role::Model as RoleModel;
 use crate::models::role_permission;
 use crate::models::role_permission::Model as RolePermissionModel;
 use crate::models::{role, user_role};
 use crate::services::ServiceContext;
 use crate::services::audit::{AuditEvent, AuditService};
-use crate::services::role::RoleService;
+use crate::services::role::{GetUserRolesInput, RoleService};
+use crate::types::{Action, PermissionReference, Resource};
 
 #[derive(Debug)]
 pub struct PermissionService;
@@ -177,28 +177,19 @@ impl PermissionService {
         };
 
         // Get all the roles the user has for this site
-        let mut role_ids: Vec<i64> = UserRole::find()
-            .join(JoinType::InnerJoin, user_role::Relation::Role.def())
-            .filter(
-                Condition::all()
-                    .add(user_role::Column::UserId.eq(user_id))
-                    .add(role::Column::SiteId.eq(site_id)),
-            )
-            .all(txn)
-            .await
-            .or_raise(make_error)?
-            .into_iter()
-            .map(|ur| ur.role_id)
-            .collect();
-
-        // If the user has no roles, apply virtual "guest" role
-        if role_ids.is_empty() {
-            let guest_role = RoleService::get_guest_role_for_site(ctx, site_id)
-                .await
-                .or_raise(make_error)?;
-
-            role_ids.push(guest_role.role_id);
-        }
+        let role_ids: Vec<i64> = RoleService::get_all_roles_for_user_and_site(
+            ctx,
+            GetUserRolesInput {
+                user_id: Some(user_id),
+                site_id,
+                page_reference: None,
+            },
+        )
+        .await
+        .or_raise(make_error)?
+        .into_iter()
+        .map(|ur| ur.role_id)
+        .collect();
 
         // Check if any of those roles have the permission
         let exists = RolePermission::find()
@@ -216,8 +207,8 @@ impl PermissionService {
         ctx: &ServiceContext<'_>,
         user_id: i64,
         site_id: i64,
-        resource_type: &str,
-        action: &str,
+        resource_type: Resource,
+        action: Action,
     ) -> Result<bool> {
         let make_error = || {
             Error::new(
@@ -229,9 +220,11 @@ impl PermissionService {
             )
         };
 
-        let permission: PermissionModel =
-            Self::get_permission_from_resource_and_action(ctx, resource_type, action)
-                .await?;
+        let permission: PermissionModel = Self::get(
+            ctx,
+            PermissionReference::ResourceAction(resource_type, action),
+        )
+        .await?;
 
         let has_permission = Self::check_user_has_permission(
             ctx,
@@ -247,55 +240,24 @@ impl PermissionService {
 
     pub async fn get_optional(
         ctx: &ServiceContext<'_>,
-        reference: Reference<'_>,
+        reference: PermissionReference,
     ) -> Result<Option<PermissionModel>> {
         let txn = ctx.transaction();
 
         let make_error =
             || Error::new("failed to fetch permission", ErrorType::Permission);
 
-        let permission = match reference {
-            Reference::Id(id) => permission::Entity::find_by_id(id)
-                .one(txn)
-                .await
-                .or_raise(make_error)?,
-            _ => None,
-        };
-
-        Ok(permission)
-    }
-
-    #[inline]
-    pub async fn get(
-        ctx: &ServiceContext<'_>,
-        reference: Reference<'_>,
-    ) -> Result<PermissionModel> {
-        find_or_error!(Self::get_optional(ctx, reference), "permission", Permission)
-    }
-
-    pub async fn get_permission_from_resource_and_action_optional(
-        ctx: &ServiceContext<'_>,
-        resource_type: &str,
-        action: &str,
-    ) -> Result<Option<PermissionModel>> {
-        let txn = ctx.transaction();
-
-        let make_error = || {
-            Error::new(
-                format!(
-                    "failed to fetch permission for resource type {} and action {}",
-                    resource_type, action
-                ),
-                ErrorType::Permission,
-            )
-        };
-
-        let permission = permission::Entity::find()
-            .filter(
+        let condition = match reference {
+            PermissionReference::Id(id) => permission::Column::PermissionId.eq(id),
+            PermissionReference::ResourceAction(resource, action) => {
                 permission::Column::ResourceType
-                    .eq(resource_type)
-                    .and(permission::Column::Action.eq(action)),
-            )
+                    .eq(resource.to_string())
+                    .and(permission::Column::Action.eq(action.to_string()))
+            }
+        };
+
+        let permission = Permission::find()
+            .filter(condition)
             .one(txn)
             .await
             .or_raise(make_error)?;
@@ -304,19 +266,10 @@ impl PermissionService {
     }
 
     #[inline]
-    pub async fn get_permission_from_resource_and_action(
+    pub async fn get(
         ctx: &ServiceContext<'_>,
-        resource_type: &str,
-        action: &str,
+        reference: PermissionReference,
     ) -> Result<PermissionModel> {
-        find_or_error!(
-            Self::get_permission_from_resource_and_action_optional(
-                ctx,
-                resource_type,
-                action
-            ),
-            "permission",
-            Permission,
-        )
+        find_or_error!(Self::get_optional(ctx, reference), "permission", Permission)
     }
 }

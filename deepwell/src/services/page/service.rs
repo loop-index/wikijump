@@ -35,7 +35,7 @@ use crate::services::{
     CategoryService, FilterService, PageRevisionService, SiteService, TextBlockService,
     TextService,
 };
-use crate::types::{PageId, PageOrder};
+use crate::types::{Action, PageId, PageOrder, Resource};
 use crate::utils::{get_category_name, trim_default};
 use ftml::layout::Layout;
 use ref_map::*;
@@ -1243,10 +1243,10 @@ impl PageService {
         ctx: &ServiceContext<'_>,
         site_id: i64,
         user_id: i64,
-        action: &str,
+        action: Action,
     ) -> Result<bool> {
         // TODO: Additional logic for per-category permissions here...
-        PermissionService::check_user_can(ctx, user_id, site_id, "page", action)
+        PermissionService::check_user_can(ctx, user_id, site_id, Resource::Page, action)
             .await
             .or_raise(|| Error::new("permission check failed", ErrorType::Page))
     }

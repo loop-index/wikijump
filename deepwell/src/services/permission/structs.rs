@@ -18,6 +18,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::types::{Action, Resource};
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct PermissionInput {
     pub description: String,

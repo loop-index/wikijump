@@ -18,17 +18,21 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 use super::prelude::*;
+use crate::endpoints::user;
 use crate::error::{Error, ErrorType};
-use crate::models::permission::Model as PermissionModel;
+use crate::models::permission::{Entity as Permission, Model as PermissionModel};
+use crate::models::prelude::Page;
 use crate::models::role::{self, Entity as Role, Model as RoleModel};
-use crate::models::user_role;
-use crate::models::user_role::Model as UserRoleModel;
-use crate::services::ServiceContext;
+use crate::models::role_permission::{self, Entity as RolePermission};
+use crate::models::user_role::{Entity as UserRole, Model as UserRoleModel};
+use crate::models::{page, user_role};
 use crate::services::audit::{AuditEvent, AuditService};
 use crate::services::permission::PermissionService;
-use crate::services::role::GUEST_ROLE_NAME;
-use crate::utils::now;
-use sea_orm::prelude::TimeDateTimeWithTimeZone;
+use crate::services::relation::{GetPageAttributions, GetSiteMember, SiteMemberAccepted};
+use crate::services::role::SystemRole;
+use crate::services::{PageService, RelationService, ServiceContext};
+use crate::utils::{now, trim_default};
+use sea_orm::prelude::Expr;
 use std::net::IpAddr;
 
 #[derive(Debug)]
@@ -83,6 +87,7 @@ impl RoleService {
 
     pub async fn update(
         ctx: &ServiceContext<'_>,
+        site_id: i64,
         reference: Reference<'_>,
         UpdateRoleInput {
             name,
@@ -95,7 +100,7 @@ impl RoleService {
     ) -> Result<RoleModel> {
         let txn = ctx.transaction();
 
-        let role = Self::get(ctx, reference)
+        let role = Self::get(ctx, site_id, reference)
             .await
             .or_raise(|| Error::new("failed to update role data", ErrorType::Role))?;
 
@@ -135,29 +140,33 @@ impl RoleService {
                 .or_raise(make_error)?;
 
         // TODO: Make this more efficient
-        for permission_id in &current_permissions {
-            PermissionService::remove_permission_from_role(
-                ctx,
-                role.role_id,
-                *permission_id,
-            )
+
+        // Remove all existing permissions for this role
+        RolePermission::delete_many()
+            .filter(role_permission::Column::RoleId.eq(role.role_id))
+            .exec(txn)
             .await
             .or_raise(make_error)?;
-        }
 
-        let new_permissions = if let Maybe::Set(permission_ids) = &permission_ids {
-            for permission_id in permission_ids {
-                PermissionService::add_permission_to_role(
-                    ctx,
-                    role.role_id,
-                    *permission_id,
-                )
-                .await
-                .or_raise(make_error)?;
+        // Add new permissions for this role
+        let new_permissions = match &permission_ids {
+            Maybe::Set(permission_ids) => {
+                let models: Vec<role_permission::ActiveModel> = permission_ids
+                    .iter()
+                    .map(|&permission_id| role_permission::ActiveModel {
+                        role_id: Set(role.role_id),
+                        permission_id: Set(permission_id),
+                    })
+                    .collect();
+
+                RolePermission::insert_many(models)
+                    .exec(txn)
+                    .await
+                    .or_raise(make_error)?;
+
+                permission_ids.clone()
             }
-            permission_ids.clone()
-        } else {
-            Vec::new()
+            _ => Vec::new(),
         };
 
         let updated_role = model.update(txn).await.or_raise(make_error)?;
@@ -181,15 +190,30 @@ impl RoleService {
 
     pub async fn delete(
         ctx: &ServiceContext<'_>,
+        site_id: i64,
         reference: Reference<'_>,
         deleting_user_id: i64,
         ip_address: IpAddr,
     ) -> Result<()> {
         let txn = ctx.transaction();
 
-        let role = Self::get(ctx, reference)
+        let role = Self::get(ctx, site_id, reference)
             .await
             .or_raise(|| Error::new("failed to delete role", ErrorType::Role))?;
+
+        // Remove this role from all users who actively have it
+        UserRole::update_many()
+            .col_expr(user_role::Column::DeletedAt, Expr::value(Some(now())))
+            .filter(
+                user_role::Column::RoleId
+                    .eq(role.role_id)
+                    .and(user_role::Column::DeletedAt.is_null()),
+            )
+            .exec(txn)
+            .await
+            .or_raise(|| {
+                Error::new("failed to remove role from users", ErrorType::Role)
+            })?;
 
         let make_error = || {
             Error::new(
@@ -226,17 +250,33 @@ impl RoleService {
 
     pub async fn get_optional(
         ctx: &ServiceContext<'_>,
+        site_id: i64,
         reference: Reference<'_>,
     ) -> Result<Option<RoleModel>> {
         let txn = ctx.transaction();
 
         let make_error = || Error::new("failed to get role", ErrorType::Role);
 
-        let role = match reference {
-            Reference::Id(id) => {
-                Role::find_by_id(id).one(txn).await.or_raise(make_error)?
-            }
-            _ => None,
+        let role = {
+            let condition = match reference {
+                Reference::Id(id) => role::Column::RoleId.eq(id),
+                Reference::Slug(slug) => {
+                    // Get role by role name
+                    role::Column::Name
+                        .eq(slug)
+                        .and(role::Column::DeletedAt.is_null())
+                }
+            };
+
+            Role::find()
+                .filter(
+                    Condition::all()
+                        .add(condition)
+                        .add(role::Column::SiteId.eq(site_id)),
+                )
+                .one(txn)
+                .await
+                .or_raise(make_error)?
         };
 
         Ok(role)
@@ -245,13 +285,15 @@ impl RoleService {
     #[inline]
     pub async fn get(
         ctx: &ServiceContext<'_>,
+        site_id: i64,
         reference: Reference<'_>,
     ) -> Result<RoleModel> {
-        find_or_error!(Self::get_optional(ctx, reference), "role", Role)
+        find_or_error!(Self::get_optional(ctx, site_id, reference), "role", Role)
     }
 
     pub async fn grant_role_to_user(
         ctx: &ServiceContext<'_>,
+        site_id: i64,
         GrantUserRoleInput {
             user_id,
             role_id,
@@ -269,7 +311,7 @@ impl RoleService {
             )
         };
 
-        let role = Self::get(ctx, role_id.into()).await?;
+        let role = Self::get(ctx, site_id, role_id.into()).await?;
 
         let user_role = user_role::ActiveModel {
             user_id: Set(user_id),
@@ -354,24 +396,150 @@ impl RoleService {
         Ok(deleted_user_role)
     }
 
-    pub async fn get_guest_role_for_site(
+    pub async fn get_all_roles_for_user_and_site(
         ctx: &ServiceContext<'_>,
-        site_id: i64,
-    ) -> Result<RoleModel> {
+        GetUserRolesInput {
+            user_id,
+            site_id,
+            page_reference,
+        }: GetUserRolesInput,
+    ) -> Result<Vec<RoleModel>> {
         let txn = ctx.transaction();
 
-        let make_error = || Error::new("failed to get guest role", ErrorType::Role);
-
-        let role = Role::find()
-            .filter(
-                role::Column::SiteId
-                    .eq(site_id)
-                    .and(role::Column::Name.eq(GUEST_ROLE_NAME)),
+        let make_error = || {
+            Error::new(
+                format!(
+                    "failed to get roles for user ID {} in site ID {}",
+                    user_id.unwrap_or(-1),
+                    site_id
+                ),
+                ErrorType::Role,
             )
-            .one(txn)
+        };
+
+        let mut roles = match user_id {
+            Some(id) => Role::find()
+                .join(JoinType::InnerJoin, role::Relation::UserRole.def())
+                .filter(
+                    user_role::Column::UserId
+                        .eq(id)
+                        .and(role::Column::SiteId.eq(site_id))
+                        .and(role::Column::DeletedAt.is_null()),
+                )
+                .all(txn)
+                .await
+                .or_raise(make_error)?,
+            None => Vec::new(),
+        };
+
+        let virtual_roles = Self::get_virtual_roles_for_user(
+            ctx,
+            GetUserRolesInput {
+                user_id,
+                site_id,
+                page_reference,
+            },
+        )
+        .await
+        .or_raise(make_error)?;
+
+        roles.extend(virtual_roles);
+
+        Ok(roles)
+    }
+
+    pub async fn get_virtual_roles_for_user(
+        ctx: &ServiceContext<'_>,
+        GetUserRolesInput {
+            user_id,
+            site_id,
+            page_reference,
+        }: GetUserRolesInput,
+    ) -> Result<Vec<RoleModel>> {
+        let txn = ctx.transaction();
+
+        let make_error = || Error::new("failed to apply virtual roles", ErrorType::Role);
+
+        let virtual_roles = Role::find()
+            .filter(
+                Condition::all()
+                    .add(role::Column::SiteId.eq(site_id))
+                    .add(role::Column::IsVirtual.eq(true)), // Virtual roles are never deleted, so we don't need to check DeletedAt
+            )
+            .all(txn)
             .await
             .or_raise(make_error)?;
 
-        Ok(role.unwrap())
+        let virtual_role_name_map = virtual_roles
+            .into_iter()
+            .map(|role| (role.name.clone(), role))
+            .collect::<std::collections::HashMap<_, _>>();
+
+        // Compute user state flags
+        let is_logged_in = user_id.is_some();
+        let is_member = if is_logged_in {
+            let membership = RelationService::get_optional_site_member(
+                ctx,
+                GetSiteMember {
+                    site_id,
+                    user_id: user_id.unwrap(),
+                },
+            )
+            .await
+            .or_raise(make_error)?;
+
+            // TODO: Add invitation acceptance logic here
+            membership.is_some()
+        } else {
+            false
+        };
+        let is_page_author = if is_member && let Some(page_ref) = page_reference {
+            let attributions = RelationService::get_page_attributions(
+                ctx,
+                GetPageAttributions {
+                    site_id,
+                    page: page_ref,
+                },
+            )
+            .await
+            .or_raise(make_error)?;
+            attributions
+                .iter()
+                .any(|attr| attr.user_id == user_id.unwrap())
+        } else {
+            false
+        };
+
+        // Collect role names to add based on flags
+        let mut applied_virtual_roles = Vec::new();
+        if is_logged_in {
+            applied_virtual_roles.push(SystemRole::Registered.to_string());
+        }
+        if is_member {
+            applied_virtual_roles.push(SystemRole::Member.to_string());
+        }
+        if is_page_author {
+            applied_virtual_roles.push(SystemRole::PageAuthor.to_string());
+        }
+        if !is_logged_in {
+            applied_virtual_roles.push(SystemRole::Anonymous.to_string());
+            applied_virtual_roles.push(SystemRole::Guest.to_string());
+        } else if !is_member {
+            applied_virtual_roles.push(SystemRole::Guest.to_string());
+        }
+        applied_virtual_roles.push(SystemRole::Everyone.to_string());
+
+        info!(
+            "Applying these virtual roles for user ID {:?} in site ID {}: {:?}",
+            user_id, site_id, applied_virtual_roles
+        );
+
+        // Build the final list of applicable roles
+        let applicable_virtual_roles = applied_virtual_roles
+            .into_iter()
+            .filter_map(|name| virtual_role_name_map.get(&name).cloned())
+            .collect();
+
+        Ok(applicable_virtual_roles)
     }
 }

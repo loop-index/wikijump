@@ -17,8 +17,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-use crate::types::Maybe;
-use sea_orm::prelude::TimeDateTimeWithTimeZone;
+use crate::types::{Maybe, Reference};
+use time::OffsetDateTime;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct CreateRoleInput {
@@ -49,5 +49,12 @@ pub struct GrantUserRoleInput {
     pub user_id: i64,
     pub role_id: i64,
     pub assigning_user_id: i64,
-    pub expires_at: Option<TimeDateTimeWithTimeZone>,
+    pub expires_at: Option<OffsetDateTime>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct GetUserRolesInput {
+    pub site_id: i64,
+    pub user_id: Option<i64>,
+    pub page_reference: Option<Reference<'static>>,
 }

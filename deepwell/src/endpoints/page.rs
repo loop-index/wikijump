@@ -31,7 +31,9 @@ use crate::services::page::{
     RollbackPage, SetPageLayout,
 };
 use crate::services::page_revision::RerenderType;
-use crate::types::{Bytes, FileOrder, PageDetails, PageId, Reference, RerenderDepth};
+use crate::types::{
+    Action, Bytes, FileOrder, PageDetails, PageId, Reference, RerenderDepth,
+};
 use futures::future::try_join_all;
 
 pub async fn page_create(
@@ -218,12 +220,14 @@ pub async fn page_edit_permission(
         input.page, input.site_id,
     );
 
-    let can_edit =
-        PageService::check_user_permission(ctx, input.site_id, input.user_id, "edit")
-            .await
-            .or_raise(|| {
-                Error::new("failed to check edit permission", ErrorType::Page)
-            })?;
+    let can_edit = PageService::check_user_permission(
+        ctx,
+        input.site_id,
+        input.user_id,
+        Action::Edit,
+    )
+    .await
+    .or_raise(|| Error::new("failed to check edit permission", ErrorType::Page))?;
 
     Ok(PageEditPermissionOutput { can_edit })
 }

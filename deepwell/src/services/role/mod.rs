@@ -17,20 +17,26 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+use strum_macros::{Display, EnumString};
+
 #[allow(unused_imports)]
 mod prelude {
     pub use super::super::prelude::*;
     pub use super::structs::*;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, Display)]
+#[strum(serialize_all = "kebab_case", ascii_case_insensitive)]
 #[allow(dead_code)]
-pub const ADMIN_ROLE_NAME: &str = "admin";
-#[allow(dead_code)]
-pub const MODERATOR_ROLE_NAME: &str = "moderator";
-#[allow(dead_code)]
-pub const MEMBER_ROLE_NAME: &str = "member";
-#[allow(dead_code)]
-pub const GUEST_ROLE_NAME: &str = "guest";
+pub enum SystemRole {
+    Root,
+    Member,
+    Guest,
+    Registered,
+    Anonymous,
+    Everyone,
+    PageAuthor,
+}
 
 mod service;
 mod structs;
