@@ -20,6 +20,7 @@
 
 use super::prelude::*;
 use crate::license::License;
+use crate::types::Permission;
 use ftml::layout::Layout;
 use sea_orm::prelude::TimeDateTimeWithTimeZone;
 use std::borrow::Cow;
@@ -112,8 +113,8 @@ pub enum AuditEvent<'a> {
         role_id: i64,
         updating_user_id: i64,
         level: i32,
-        old_permissions: Vec<i64>,
-        new_permissions: Vec<i64>,
+        old_permissions: Vec<Permission>,
+        new_permissions: Vec<Permission>,
     },
     #[allow(dead_code)]
     RoleDelete {

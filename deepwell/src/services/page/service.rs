@@ -30,12 +30,14 @@ use crate::services::page_revision::{
     CreatePageRevisionBody, CreatePageRevisionOutput, CreateResurrectionPageRevision,
     CreateTombstonePageRevision,
 };
-use crate::services::permission::PermissionService;
+use crate::services::permission::{
+    CheckPermissionContext, PermissionInput, PermissionService,
+};
 use crate::services::{
     CategoryService, FilterService, PageRevisionService, SiteService, TextBlockService,
     TextService,
 };
-use crate::types::{Action, PageId, PageOrder, Resource};
+use crate::types::{Action, PageId, PageOrder, Reference, Resource};
 use crate::utils::{get_category_name, trim_default};
 use ftml::layout::Layout;
 use ref_map::*;
@@ -1243,12 +1245,38 @@ impl PageService {
         ctx: &ServiceContext<'_>,
         site_id: i64,
         user_id: i64,
+        page: Reference<'_>,
         action: Action,
     ) -> Result<bool> {
-        // TODO: Additional logic for per-category permissions here...
-        PermissionService::check_user_can(ctx, user_id, site_id, Resource::Page, action)
-            .await
-            .or_raise(|| Error::new("permission check failed", ErrorType::Page))
+        let page_model = Self::get(ctx, site_id, page.clone()).await.or_raise(|| {
+            Error::new("failed to check user permissions for page", ErrorType::Page)
+        })?;
+
+        let make_error = || {
+            Error::new(
+                format!(
+                    "failed to check user permissions for page {:?} on site ID {}, user ID {}, action {:?}",
+                    page_model.page_id, site_id, user_id, action,
+                ),
+                ErrorType::Page,
+            )
+        };
+
+        PermissionService::check_user_can(
+            ctx,
+            CheckPermissionContext {
+                user_id: Some(user_id),
+                site_id,
+                page_reference: Some(page),
+                permission: PermissionInput {
+                    resource_type: Resource::Page,
+                    resource_category: Some(Reference::Id(page_model.page_category_id)),
+                    action,
+                },
+            },
+        )
+        .await
+        .or_raise(make_error)
     }
 }
 

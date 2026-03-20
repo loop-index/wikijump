@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-use crate::types::{Maybe, Reference};
+use crate::types::{Maybe, Permission, Reference};
 use time::OffsetDateTime;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -41,7 +41,7 @@ pub struct UpdateRoleInput {
     pub name: Maybe<String>,
     pub description: Maybe<String>,
     pub level: Maybe<i32>,
-    pub permission_ids: Maybe<Vec<i64>>,
+    pub permissions: Maybe<Vec<Permission>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -53,8 +53,8 @@ pub struct GrantUserRoleInput {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct GetUserRolesInput {
+pub struct GetUserRolesInput<'a> {
     pub site_id: i64,
     pub user_id: Option<i64>,
-    pub page_reference: Option<Reference<'static>>,
+    pub page_reference: Option<Reference<'a>>,
 }

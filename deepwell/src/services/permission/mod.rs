@@ -24,8 +24,12 @@ mod prelude {
     pub use super::structs::*;
 }
 
+mod resolvers;
 mod service;
 mod structs;
 
+pub use self::resolvers::{
+    CategoryResolver, PageCategoryResolver, resolve_category_reference,
+};
 pub use self::service::PermissionService;
 pub use self::structs::*;

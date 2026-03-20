@@ -18,13 +18,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::types::{Action, Resource};
+use crate::types::{Action, Reference, Resource};
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct PermissionInput {
-    pub description: String,
-    pub resource_type: String,
-    pub action: String,
+    pub resource_type: Resource,
+    pub resource_category: Option<Reference<'static>>,
+    pub action: Action,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -34,4 +34,16 @@ pub struct PermissionOutput {
     pub description: String,
     pub resource_type: String,
     pub action: String,
+}
+
+/// Context for permission checks.
+///
+/// Contains all information needed to evaluate whether a user can perform
+/// an action on a resource.
+#[derive(Debug, Clone)]
+pub struct CheckPermissionContext<'a> {
+    pub user_id: Option<i64>,
+    pub site_id: i64,
+    pub page_reference: Option<Reference<'a>>,
+    pub permission: PermissionInput,
 }

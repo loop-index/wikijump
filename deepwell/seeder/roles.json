@@ -8,6 +8,7 @@
         "permissions": [
             "page:view",
             "page:edit",
+            "page:system:edit",
             "page:create",
             "page:delete",
             "page:rename",

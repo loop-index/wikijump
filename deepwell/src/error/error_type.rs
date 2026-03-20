@@ -154,13 +154,14 @@ pub enum ErrorType {
     Permission,
     Role,
     AddRolePermission,
-    #[allow(unused_variables)]
+    #[allow(dead_code)]
     RemoveRolePermission,
     GrantUserRole,
-    #[allow(unused_variables)]
+    #[allow(dead_code)]
     RevokeUserRole,
+    #[allow(dead_code)]
     PermissionNotFound,
-    #[allow(unused_variables)]
+    #[allow(dead_code)]
     RoleNotFound,
 
     // 4000

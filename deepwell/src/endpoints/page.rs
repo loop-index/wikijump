@@ -224,6 +224,7 @@ pub async fn page_edit_permission(
         ctx,
         input.site_id,
         input.user_id,
+        input.page,
         Action::Edit,
     )
     .await

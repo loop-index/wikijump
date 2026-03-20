@@ -28,7 +28,6 @@ pub use super::page_lock::Entity as PageLock;
 pub use super::page_parent::Entity as PageParent;
 pub use super::page_revision::Entity as PageRevision;
 pub use super::page_vote::Entity as PageVote;
-pub use super::permission::Entity as Permission;
 pub use super::relation::Entity as Relation;
 pub use super::role::Entity as Role;
 pub use super::role_permission::Entity as RolePermission;

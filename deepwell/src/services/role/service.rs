@@ -20,20 +20,21 @@
 use super::prelude::*;
 use crate::endpoints::user;
 use crate::error::{Error, ErrorType};
-use crate::models::permission::{Entity as Permission, Model as PermissionModel};
 use crate::models::prelude::Page;
 use crate::models::role::{self, Entity as Role, Model as RoleModel};
 use crate::models::role_permission::{self, Entity as RolePermission};
 use crate::models::user_role::{Entity as UserRole, Model as UserRoleModel};
 use crate::models::{page, user_role};
 use crate::services::audit::{AuditEvent, AuditService};
-use crate::services::permission::PermissionService;
+use crate::services::permission::{CheckPermissionContext, PermissionService};
 use crate::services::relation::{GetPageAttributions, GetSiteMember, SiteMemberAccepted};
 use crate::services::role::SystemRole;
 use crate::services::{PageService, RelationService, ServiceContext};
+use crate::types::{Action, Permission, Reference, Resource};
 use crate::utils::{now, trim_default};
 use sea_orm::prelude::Expr;
 use std::net::IpAddr;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct RoleService;
@@ -93,7 +94,7 @@ impl RoleService {
             name,
             description,
             level,
-            permission_ids,
+            permissions,
         }: UpdateRoleInput,
         updating_user_id: i64,
         ip_address: IpAddr,
@@ -134,10 +135,19 @@ impl RoleService {
         }
 
         // Update permissions
-        let current_permissions =
-            PermissionService::get_permission_ids_for_role(ctx, role.role_id)
+        let current_permissions: Vec<Permission> =
+            PermissionService::get_permissions_for_role(ctx, role.role_id)
                 .await
-                .or_raise(make_error)?;
+                .or_raise(make_error)?
+                .into_iter()
+                .filter_map(|perm| {
+                    Some(Permission {
+                        resource: Resource::from_str(&perm.resource_type).ok()?,
+                        resource_category: perm.resource_category_id.map(Reference::Id),
+                        action: Action::from_str(&perm.action).ok()?,
+                    })
+                })
+                .collect();
 
         // TODO: Make this more efficient
 
@@ -149,13 +159,23 @@ impl RoleService {
             .or_raise(make_error)?;
 
         // Add new permissions for this role
-        let new_permissions = match &permission_ids {
-            Maybe::Set(permission_ids) => {
-                let models: Vec<role_permission::ActiveModel> = permission_ids
+        let new_permissions = match &permissions {
+            Maybe::Set(permissions) => {
+                let models: Vec<role_permission::ActiveModel> = permissions
                     .iter()
-                    .map(|&permission_id| role_permission::ActiveModel {
+                    .map(|permission| role_permission::ActiveModel {
                         role_id: Set(role.role_id),
-                        permission_id: Set(permission_id),
+                        site_id: Set(role.site_id),
+                        resource_type: Set(permission.resource.to_string()),
+                        resource_category_id: Set(permission
+                            .resource_category
+                            .as_ref()
+                            .and_then(|r| match r {
+                                Reference::Id(id) => Some(*id),
+                                Reference::Slug(_) => None,
+                            })),
+                        action: Set(permission.action.to_string()),
+                        ..Default::default()
                     })
                     .collect();
 
@@ -164,7 +184,7 @@ impl RoleService {
                     .await
                     .or_raise(make_error)?;
 
-                permission_ids.clone()
+                permissions.clone()
             }
             _ => Vec::new(),
         };
@@ -398,11 +418,7 @@ impl RoleService {
 
     pub async fn get_all_roles_for_user_and_site(
         ctx: &ServiceContext<'_>,
-        GetUserRolesInput {
-            user_id,
-            site_id,
-            page_reference,
-        }: GetUserRolesInput,
+        input: GetUserRolesInput<'_>,
     ) -> Result<Vec<RoleModel>> {
         let txn = ctx.transaction();
 
@@ -410,20 +426,20 @@ impl RoleService {
             Error::new(
                 format!(
                     "failed to get roles for user ID {} in site ID {}",
-                    user_id.unwrap_or(-1),
-                    site_id
+                    input.user_id.unwrap_or(-1),
+                    input.site_id
                 ),
                 ErrorType::Role,
             )
         };
 
-        let mut roles = match user_id {
+        let mut roles = match input.user_id {
             Some(id) => Role::find()
                 .join(JoinType::InnerJoin, role::Relation::UserRole.def())
                 .filter(
                     user_role::Column::UserId
                         .eq(id)
-                        .and(role::Column::SiteId.eq(site_id))
+                        .and(role::Column::SiteId.eq(input.site_id))
                         .and(role::Column::DeletedAt.is_null()),
                 )
                 .all(txn)
@@ -432,29 +448,25 @@ impl RoleService {
             None => Vec::new(),
         };
 
-        let virtual_roles = Self::get_virtual_roles_for_user(
-            ctx,
-            GetUserRolesInput {
-                user_id,
-                site_id,
-                page_reference,
-            },
-        )
-        .await
-        .or_raise(make_error)?;
+        let virtual_roles = Self::get_virtual_roles_for_user(ctx, &input)
+            .await
+            .or_raise(make_error)?;
 
         roles.extend(virtual_roles);
+
+        info!(
+            "User ID {:?} has these roles in site ID {}: {:?}",
+            input.user_id,
+            input.site_id,
+            roles.iter().map(|r| &r.name).collect::<Vec<_>>()
+        );
 
         Ok(roles)
     }
 
     pub async fn get_virtual_roles_for_user(
         ctx: &ServiceContext<'_>,
-        GetUserRolesInput {
-            user_id,
-            site_id,
-            page_reference,
-        }: GetUserRolesInput,
+        input: &GetUserRolesInput<'_>,
     ) -> Result<Vec<RoleModel>> {
         let txn = ctx.transaction();
 
@@ -463,7 +475,7 @@ impl RoleService {
         let virtual_roles = Role::find()
             .filter(
                 Condition::all()
-                    .add(role::Column::SiteId.eq(site_id))
+                    .add(role::Column::SiteId.eq(input.site_id))
                     .add(role::Column::IsVirtual.eq(true)), // Virtual roles are never deleted, so we don't need to check DeletedAt
             )
             .all(txn)
@@ -476,13 +488,13 @@ impl RoleService {
             .collect::<std::collections::HashMap<_, _>>();
 
         // Compute user state flags
-        let is_logged_in = user_id.is_some();
+        let is_logged_in = input.user_id.is_some();
         let is_member = if is_logged_in {
             let membership = RelationService::get_optional_site_member(
                 ctx,
                 GetSiteMember {
-                    site_id,
-                    user_id: user_id.unwrap(),
+                    site_id: input.site_id,
+                    user_id: input.user_id.unwrap(),
                 },
             )
             .await
@@ -493,19 +505,19 @@ impl RoleService {
         } else {
             false
         };
-        let is_page_author = if is_member && let Some(page_ref) = page_reference {
+        let is_page_author = if is_member && let Some(page_ref) = &input.page_reference {
             let attributions = RelationService::get_page_attributions(
                 ctx,
                 GetPageAttributions {
-                    site_id,
-                    page: page_ref,
+                    site_id: input.site_id,
+                    page: page_ref.clone(),
                 },
             )
             .await
             .or_raise(make_error)?;
             attributions
                 .iter()
-                .any(|attr| attr.user_id == user_id.unwrap())
+                .any(|attr| attr.user_id == input.user_id.unwrap())
         } else {
             false
         };
@@ -531,7 +543,7 @@ impl RoleService {
 
         info!(
             "Applying these virtual roles for user ID {:?} in site ID {}: {:?}",
-            user_id, site_id, applied_virtual_roles
+            input.user_id, input.site_id, applied_virtual_roles
         );
 
         // Build the final list of applicable roles

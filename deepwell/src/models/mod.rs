@@ -31,7 +31,6 @@ pub mod page_lock;
 pub mod page_parent;
 pub mod page_revision;
 pub mod page_vote;
-pub mod permission;
 pub mod relation;
 pub mod role;
 pub mod role_permission;

@@ -960,16 +960,6 @@ CREATE INDEX forum_post_revision_lookup_idx ON forum_post_revision (forum_post_i
 -- Role / permission system
 --
 
--- Lookup table for permissions. This is shared across all sites.
-CREATE TABLE permission (
-    permission_id BIGSERIAL PRIMARY KEY,
-    description TEXT NOT NULL,
-    resource_type TEXT NOT NULL,
-    action TEXT NOT NULL,
-
-    UNIQUE (resource_type, action)
-);
-
 -- Roles in a site.
 CREATE TABLE role (
     role_id BIGSERIAL PRIMARY KEY,
@@ -1002,11 +992,18 @@ CREATE TABLE role (
     UNIQUE (site_id, name)
 );
 
--- Role permissions (many-to-many)
+-- Role permissions (1-to-many)
 CREATE TABLE role_permission (
+    id BIGSERIAL PRIMARY KEY,
     role_id BIGINT NOT NULL REFERENCES role(role_id),
-    permission_id BIGINT NOT NULL REFERENCES permission(permission_id),
-    PRIMARY KEY (role_id, permission_id)
+    -- Denormalized to avoid a join when filtering permissions by site.
+    site_id BIGINT NOT NULL REFERENCES site(site_id),
+    resource_type TEXT NOT NULL,
+    -- Polymorphic reference to a resource category. For example, if the resource_type is "forum_category", then this references forum_category_id.
+    -- NULL means the permission applies to all resources of the given type
+    resource_category_id BIGINT,
+    action TEXT NOT NULL,
+    UNIQUE (site_id, role_id, resource_type, resource_category_id, action)
 );
 
 -- User role assignments (many-to-many)
@@ -1022,10 +1019,6 @@ CREATE TABLE user_role (
     deleted_at TIMESTAMP WITH TIME ZONE,
     PRIMARY KEY (user_id, role_id)
 );
-
--- Index for permission lookup.
-CREATE UNIQUE INDEX permission_resource_action_idx ON permission
-    (resource_type, action);
 
 --
 -- Audit Log
