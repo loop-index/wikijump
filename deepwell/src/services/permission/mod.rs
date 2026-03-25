@@ -24,10 +24,12 @@ mod prelude {
     pub use super::structs::*;
 }
 
+mod cache;
 mod resolvers;
 mod service;
 mod structs;
 
+pub use self::cache::PermissionCache;
 pub use self::resolvers::{
     CategoryResolver, PageCategoryResolver, resolve_category_reference,
 };

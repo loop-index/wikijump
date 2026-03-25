@@ -34,7 +34,7 @@ use crate::services::file::{
 use crate::services::filter::{CreateFilter, FilterService};
 use crate::services::page::{CreatePage, PageService};
 use crate::services::permission::{
-    PermissionInput, PermissionService, resolve_category_reference,
+    PermissionCache, PermissionInput, PermissionService, resolve_category_reference,
 };
 use crate::services::relation::{
     PageAttributionEntry, PageAttributionKind, PageAttributionMetadata, RelationService,
@@ -587,6 +587,11 @@ pub async fn seed(state: &ServerState) -> Result<()> {
                 .or_raise(make_error)?;
             }
         }
+
+        // Trigger building of permission cache after all permissions have been added.
+        PermissionCache::build_tree(&ctx, site_id)
+            .await
+            .or_raise(make_error)?;
     }
 
     // After all seeding, modify ID sequences so that they exhibit Wikidot compatibility.
