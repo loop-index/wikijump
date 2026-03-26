@@ -139,6 +139,10 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+    links:
+      - deepwell
+      - framerail
+      - wws
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wikijump-health-check"]

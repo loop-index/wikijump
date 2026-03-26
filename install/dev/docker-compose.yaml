@@ -93,6 +93,10 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+    links:
+      - deepwell
+      - framerail
+      - wws
     environment:
       - "DIGITALOCEAN_API_TOKEN=${DIGITALOCEAN_API_TOKEN}"
     restart: unless-stopped
