@@ -10,6 +10,9 @@ if nc -z deepwell 2747 && wikijump-generate-caddyfile; then
 	mv /tmp/Caddyfile /etc/caddy/Caddyfile
 else
 	echo 'Cannot reach DEEPWELL, using provisional Caddyfile to start'
+	# Template for the provisional Caddyfile is already installed in the container
+	deploy_host="$(jq -r .params.deploy_host /etc/caddy-request.json)"
+	sed -i "s/<<DEPLOY_HOST>>/$deploy_host/" /etc/caddy/Caddyfile
 fi
 
 # It'll fork off and the child process will be tracked
