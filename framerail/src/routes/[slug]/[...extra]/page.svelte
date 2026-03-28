@@ -36,7 +36,7 @@
       body: JSON.stringify({
         siteId: page.data.site.site_id,
         pageId: page.data.page.page_id
-      }),
+      })
     }).then((res) => res.text())
 
     const result = deserialize<

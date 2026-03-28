@@ -205,6 +205,24 @@ pub async fn page_edit(
 ) -> Result<Option<EditPageOutput>> {
     let input: EditPage = parse!(params, Page);
     info!("Editing page {:?} in site ID {}", input.page, input.site_id);
+
+    let can_edit = PageService::check_user_permission(
+        ctx,
+        input.site_id,
+        Some(input.user_id),
+        input.page.clone(),
+        Action::Edit,
+    )
+    .await
+    .or_raise(|| Error::new("failed to check edit permission", ErrorType::Page))?;
+
+    if !can_edit {
+        return Err(Error::new(
+            "user does not have permission to edit this page",
+            ErrorType::PermissionDenied,
+        )
+        .into());
+    }
     PageService::edit(ctx, input)
         .await
         .or_raise(|| Error::new("failed to edit page", ErrorType::Page))

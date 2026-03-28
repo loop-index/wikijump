@@ -163,6 +163,7 @@ pub enum ErrorType {
     PermissionNotFound,
     #[allow(dead_code)]
     RoleNotFound,
+    PermissionDenied,
 
     // 4000
     BadRequest,
@@ -379,6 +380,8 @@ impl ErrorType {
             ErrorType::ForumThread => 1325,
             ErrorType::ForumPost => 1326,
             ErrorType::ForumPostRevision => 1327,
+            ErrorType::Permission => 1328,
+            ErrorType::Role => 1329,
 
             //
             // 2000 -- Data Consistency
@@ -433,14 +436,13 @@ impl ErrorType {
             ErrorType::InvalidAuthorizationToken => 3006,
 
             // 3100 - Permissions
-            ErrorType::Permission => 3100,
-            ErrorType::Role => 3101,
-            ErrorType::AddRolePermission => 3102,
-            ErrorType::RemoveRolePermission => 3103,
-            ErrorType::GrantUserRole => 3104,
-            ErrorType::RevokeUserRole => 3105,
-            ErrorType::PermissionNotFound => 3106,
-            ErrorType::RoleNotFound => 3107,
+            ErrorType::AddRolePermission => 3100,
+            ErrorType::RemoveRolePermission => 3101,
+            ErrorType::GrantUserRole => 3102,
+            ErrorType::RevokeUserRole => 3103,
+            ErrorType::PermissionNotFound => 3104,
+            ErrorType::RoleNotFound => 3105,
+            ErrorType::PermissionDenied => 3106,
 
             //
             // 4000, 5000, 6000 -- Client / Request Errors
@@ -629,6 +631,8 @@ impl ErrorType {
             ErrorType::ForumThread => "Failed to act on a forum thread",
             ErrorType::ForumPost => "Failed to act on a forum post",
             ErrorType::ForumPostRevision => "Failed to act on a forum post revision",
+            ErrorType::Permission => "Failed to act on a permission",
+            ErrorType::Role => "Failed to act on a role",
 
             // 2000
             ErrorType::GeneralNotFound => "Unspecified entity does not exist",
@@ -685,8 +689,6 @@ impl ErrorType {
             }
 
             // 3100
-            ErrorType::Permission => "Failed to act on a permission",
-            ErrorType::Role => "Failed to act on a role",
             ErrorType::AddRolePermission => "Failed to add a permission to a role",
             ErrorType::RemoveRolePermission => {
                 "Failed to remove a permission from a role"
@@ -695,6 +697,9 @@ impl ErrorType {
             ErrorType::RevokeUserRole => "Failed to revoke a role from a user",
             ErrorType::PermissionNotFound => "Permission not found",
             ErrorType::RoleNotFound => "Role not found",
+            ErrorType::PermissionDenied => {
+                "User does not have permission to perform this action"
+            }
 
             // 4000
             ErrorType::BadRequest => "The request is in some way malformed or incorrect",

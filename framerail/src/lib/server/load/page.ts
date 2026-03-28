@@ -391,8 +391,7 @@ export async function pageEditPermissionAction({
   params,
   cookies
 }: RequestEvent) {
-  const requestData: { siteId: number; pageId: number } =
-    await request.json()
+  const requestData: { siteId: number; pageId: number } = await request.json()
 
   const sessionToken = cookies.get("wikijump_token")
   const session = await authGetSession(sessionToken)

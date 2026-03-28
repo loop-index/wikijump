@@ -1244,7 +1244,7 @@ impl PageService {
     pub async fn check_user_permission(
         ctx: &ServiceContext<'_>,
         site_id: i64,
-        user_id: i64,
+        user_id: Option<i64>,
         page: Reference<'_>,
         action: Action,
     ) -> Result<bool> {
@@ -1255,7 +1255,7 @@ impl PageService {
         let make_error = || {
             Error::new(
                 format!(
-                    "failed to check user permissions for page {:?} on site ID {}, user ID {}, action {:?}",
+                    "failed to check user permissions for page {:?} on site ID {}, user ID {:?}, action {:?}",
                     page_model.page_id, site_id, user_id, action,
                 ),
                 ErrorType::Page,
@@ -1264,15 +1264,15 @@ impl PageService {
 
         PermissionService::check_user_can(
             ctx,
-            CheckPermissionContext {
-                user_id: Some(user_id),
+            &CheckPermissionContext {
+                user_id,
                 site_id,
                 page_reference: Some(page),
-                permission: PermissionInput {
-                    resource_type: Resource::Page,
-                    resource_category: Some(Reference::Id(page_model.page_category_id)),
-                    action,
-                },
+            },
+            PermissionInput {
+                resource_type: Resource::Page,
+                resource_category: Some(Reference::Id(page_model.page_category_id)),
+                action,
             },
         )
         .await

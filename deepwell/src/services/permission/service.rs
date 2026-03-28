@@ -229,19 +229,16 @@ impl PermissionService {
 
     pub async fn check_user_can(
         ctx: &ServiceContext<'_>,
-        perm_ctx: CheckPermissionContext<'_>,
+        perm_ctx: &CheckPermissionContext<'_>,
+        PermissionInput {
+            resource_type,
+            resource_category,
+            action,
+        }: PermissionInput,
     ) -> Result<bool> {
-        let CheckPermissionContext {
-            user_id,
-            site_id,
-            page_reference,
-            permission:
-                PermissionInput {
-                    resource_type,
-                    resource_category,
-                    action,
-                },
-        } = perm_ctx;
+        let user_id = perm_ctx.user_id;
+        let site_id = perm_ctx.site_id;
+        let page_reference = perm_ctx.page_reference.clone();
 
         // Resolve category reference to ID for permission checking
         let resource_category_id = match resource_category {

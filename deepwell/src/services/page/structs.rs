@@ -309,7 +309,7 @@ impl From<(CreatePageRevisionOutput, String)> for RestorePageOutput {
 pub struct PageEditPermission<'a> {
     pub site_id: i64,
     pub page: Reference<'a>,
-    pub user_id: i64,
+    pub user_id: Option<i64>,
 }
 
 #[derive(Serialize, Debug, Clone)]
