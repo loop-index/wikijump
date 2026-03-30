@@ -316,8 +316,9 @@ impl PermissionService {
                     info!("Permission cache miss, querying database directly");
 
                     // If cache miss, rebuild tree async
-                    #[allow(unused_must_use)]
-                    PermissionCache::build_tree(ctx, site_id);
+                    let _ = PermissionCache::build_tree(ctx, site_id)
+                        .await
+                        .or_raise(make_error);
 
                     // fall back to database query
                     Self::query_roles_with_permission_db(

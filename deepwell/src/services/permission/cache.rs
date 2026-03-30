@@ -78,31 +78,28 @@ impl PermissionCache {
 
         let key = Self::key(site_id, &resource_str, &action_str);
         let field = Self::category_field(resource_category_id);
+        let default_field = Self::category_field(None);
 
-        let role_ids_str: Option<String> =
-            redis.hget(&key, &field).await.map_err(|e| {
+        // Fetch both category-specific and default values in one round trip
+        let values: Vec<Option<String>> = redis
+            .hmget(&key, &[&field, &default_field])
+            .await
+            .or_raise(|| {
                 warn!(
-                    "Failed to read permission cache key '{}' field '{}': {}",
-                    key, field, e
+                    "Failed to read permission cache key '{}' fields '{}' and '{}'",
+                    key, field, default_field
                 );
                 Error::new("Permission cache read error", ErrorType::Permission)
             })?;
 
-        // Fall back to default category if specific category is not found.
-        let role_ids_str = if role_ids_str.is_none()
-            && resource_category_id.is_some()
-            && resource_category_id != Some(-1)
-        {
-            let default_field = Self::category_field(None);
-            redis.hget(&key, &default_field).await.map_err(|e| {
-                warn!(
-                    "Failed to read default permission cache key '{}' field '{}': {}",
-                    key, default_field, e
-                );
-                Error::new("Permission cache read error", ErrorType::Permission)
-            })?
+        let category_value = values[0].clone();
+        let default_value = values[1].clone();
+
+        // Prefer category-specific value, fall back to default if not found
+        let role_ids_str = if category_value.is_some() {
+            category_value
         } else {
-            role_ids_str
+            default_value
         };
 
         match role_ids_str {
