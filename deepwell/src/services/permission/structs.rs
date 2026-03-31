@@ -21,9 +21,9 @@
 use crate::types::{Action, Reference, Resource};
 
 #[derive(Debug, Clone)]
-pub struct PermissionInput {
+pub struct PermissionInput<'a> {
     pub resource_type: Resource,
-    pub resource_category: Option<Reference<'static>>,
+    pub resource_category: Option<Reference<'a>>,
     pub action: Action,
 }
 

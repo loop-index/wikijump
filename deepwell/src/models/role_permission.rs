@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "role_permission")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
-    pub id: i64,
+    pub permission_id: i64,
     #[sea_orm(indexed)]
     pub role_id: i64,
     #[sea_orm(indexed)]

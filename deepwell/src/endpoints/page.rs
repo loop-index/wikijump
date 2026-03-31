@@ -31,6 +31,7 @@ use crate::services::page::{
     RollbackPage, SetPageLayout,
 };
 use crate::services::page_revision::RerenderType;
+use crate::services::permission::CheckPermissionContext;
 use crate::types::{
     Action, Bytes, FileOrder, PageDetails, PageId, Reference, RerenderDepth,
 };
@@ -208,9 +209,11 @@ pub async fn page_edit(
 
     let can_edit = PageService::check_user_permission(
         ctx,
-        input.site_id,
-        Some(input.user_id),
-        input.page.clone(),
+        &CheckPermissionContext {
+            user_id: Some(input.user_id),
+            site_id: input.site_id,
+            page_reference: Some(input.page.clone()),
+        },
         Action::Edit,
     )
     .await
@@ -240,9 +243,11 @@ pub async fn page_edit_permission(
 
     let can_edit = PageService::check_user_permission(
         ctx,
-        input.site_id,
-        input.user_id,
-        input.page,
+        &CheckPermissionContext {
+            user_id: input.user_id,
+            site_id: input.site_id,
+            page_reference: Some(input.page),
+        },
         Action::Edit,
     )
     .await

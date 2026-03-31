@@ -17,7 +17,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-use strum_macros::{Display, EnumString};
+
+use strum_macros::{Display, EnumString, IntoStaticStr};
 
 #[allow(unused_imports)]
 mod prelude {
@@ -25,7 +26,7 @@ mod prelude {
     pub use super::structs::*;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, Display, IntoStaticStr)]
 #[strum(serialize_all = "kebab_case", ascii_case_insensitive)]
 #[allow(dead_code)]
 pub enum SystemRole {
@@ -36,6 +37,20 @@ pub enum SystemRole {
     Anonymous,
     Everyone,
     PageAuthor,
+}
+
+impl SystemRole {
+    pub fn name(self) -> &'static str {
+        match self {
+            SystemRole::Root => "root",
+            SystemRole::Member => "member",
+            SystemRole::Guest => "guest",
+            SystemRole::Registered => "registered",
+            SystemRole::Anonymous => "anonymous",
+            SystemRole::Everyone => "everyone",
+            SystemRole::PageAuthor => "page-author",
+        }
+    }
 }
 
 mod service;

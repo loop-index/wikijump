@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
 use super::prelude::*;
 use crate::endpoints::user;
 use crate::error::{Error, ErrorType};
@@ -26,7 +27,9 @@ use crate::models::role_permission::{self, Entity as RolePermission};
 use crate::models::user_role::{Entity as UserRole, Model as UserRoleModel};
 use crate::models::{page, user_role};
 use crate::services::audit::{AuditEvent, AuditService};
-use crate::services::permission::{CheckPermissionContext, PermissionService};
+use crate::services::permission::{
+    CheckPermissionContext, PermissionService, resolve_category_reference,
+};
 use crate::services::relation::{GetPageAttributions, GetSiteMember, SiteMemberAccepted};
 use crate::services::role::SystemRole;
 use crate::services::{PageService, RelationService, ServiceContext};
@@ -73,7 +76,6 @@ impl RoleService {
             is_system: Set(is_system),
             level: Set(level),
             created_at: Set(now),
-            updated_at: Set(Some(now)),
             ..Default::default()
         };
 
@@ -161,23 +163,30 @@ impl RoleService {
         // Add new permissions for this role
         let new_permissions = match &permissions {
             Maybe::Set(permissions) => {
-                let models: Vec<role_permission::ActiveModel> = permissions
-                    .iter()
-                    .map(|permission| role_permission::ActiveModel {
+                let mut models = Vec::new();
+
+                for permission in permissions {
+                    let resource_category_id = match &permission.resource_category {
+                        Some(cat) => resolve_category_reference(
+                            ctx,
+                            role.site_id,
+                            permission.resource,
+                            cat.clone(),
+                        )
+                        .await
+                        .or_raise(make_error)?,
+                        None => None,
+                    };
+
+                    models.push(role_permission::ActiveModel {
                         role_id: Set(role.role_id),
                         site_id: Set(role.site_id),
                         resource_type: Set(permission.resource.to_string()),
-                        resource_category_id: Set(permission
-                            .resource_category
-                            .as_ref()
-                            .and_then(|r| match r {
-                                Reference::Id(id) => Some(*id),
-                                Reference::Slug(_) => None,
-                            })),
+                        resource_category_id: Set(resource_category_id),
                         action: Set(permission.action.to_string()),
                         ..Default::default()
-                    })
-                    .collect();
+                    });
+                }
 
                 RolePermission::insert_many(models)
                     .exec(txn)
@@ -425,9 +434,8 @@ impl RoleService {
         let make_error = || {
             Error::new(
                 format!(
-                    "failed to get roles for user ID {} in site ID {}",
-                    input.user_id.unwrap_or(-1),
-                    input.site_id
+                    "failed to get roles for user ID {:?} in site ID {}",
+                    input.user_id, input.site_id
                 ),
                 ErrorType::Role,
             )
@@ -500,7 +508,6 @@ impl RoleService {
             .await
             .or_raise(make_error)?;
 
-            // TODO: Add invitation acceptance logic here
             membership.is_some()
         } else {
             false
@@ -522,24 +529,24 @@ impl RoleService {
             false
         };
 
-        // Collect role names to add based on flags
+        // Collect virtual roles to apply based on flags
         let mut applied_virtual_roles = Vec::new();
         if is_logged_in {
-            applied_virtual_roles.push(SystemRole::Registered.to_string());
+            applied_virtual_roles.push(SystemRole::Registered);
         }
         if is_member {
-            applied_virtual_roles.push(SystemRole::Member.to_string());
+            applied_virtual_roles.push(SystemRole::Member);
         }
         if is_page_author {
-            applied_virtual_roles.push(SystemRole::PageAuthor.to_string());
+            applied_virtual_roles.push(SystemRole::PageAuthor);
         }
         if !is_logged_in {
-            applied_virtual_roles.push(SystemRole::Anonymous.to_string());
-            applied_virtual_roles.push(SystemRole::Guest.to_string());
+            applied_virtual_roles.push(SystemRole::Anonymous);
+            applied_virtual_roles.push(SystemRole::Guest);
         } else if !is_member {
-            applied_virtual_roles.push(SystemRole::Guest.to_string());
+            applied_virtual_roles.push(SystemRole::Guest);
         }
-        applied_virtual_roles.push(SystemRole::Everyone.to_string());
+        applied_virtual_roles.push(SystemRole::Everyone);
 
         info!(
             "Applying these virtual roles for user ID {:?} in site ID {}: {:?}",
@@ -549,7 +556,7 @@ impl RoleService {
         // Build the final list of applicable roles
         let applicable_virtual_roles = applied_virtual_roles
             .into_iter()
-            .filter_map(|name| virtual_role_name_map.get(&name).cloned())
+            .filter_map(|role| virtual_role_name_map.get(role.into()).cloned())
             .collect();
 
         Ok(applicable_virtual_roles)

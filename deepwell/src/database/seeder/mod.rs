@@ -45,6 +45,7 @@ use crate::services::site::{CreateSite, CreateSiteOutput, SiteService, UpdateSit
 use crate::services::user::{CreateUser, CreateUserOutput, UpdateUserBody, UserService};
 use crate::types::{Action, Maybe, Reference, Resource};
 use crate::utils::now;
+use arrayvec::ArrayVec;
 use sea_orm::{
     ConnectionTrait, DatabaseBackend, DatabaseTransaction, Statement, TransactionTrait,
 };
@@ -513,7 +514,7 @@ pub async fn seed(state: &ServerState) -> Result<()> {
 
             // Assign permissions to role
             for perm_spec in &role_template.permissions {
-                let parts = perm_spec.split(':').collect::<Vec<_>>();
+                let parts = perm_spec.split(':').collect::<ArrayVec<_, 3>>();
                 let (resource, resource_category, action) = match parts.as_slice() {
                     [resource, action] => (resource, None, action),
                     [resource, category_slug, action] => {
@@ -589,7 +590,7 @@ pub async fn seed(state: &ServerState) -> Result<()> {
         }
 
         // Trigger building of permission cache after all permissions have been added.
-        PermissionCache::build_tree(&ctx, site_id)
+        PermissionCache::build_permission_cache(&ctx, site_id)
             .await
             .or_raise(make_error)?;
     }

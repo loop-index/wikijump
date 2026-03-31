@@ -43,8 +43,20 @@ pub enum Action {
     Delete,
     Rename,
     Assign,
-    Remove,
 }
+
+#[derive(Debug)]
+pub struct PermissionParseError {
+    pub message: String,
+}
+
+impl std::fmt::Display for PermissionParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Parse permission error: {}", self.message)
+    }
+}
+
+impl std::error::Error for PermissionParseError {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Permission {
@@ -54,7 +66,7 @@ pub struct Permission {
 }
 
 impl FromStr for Permission {
-    type Err = &'static str;
+    type Err = PermissionParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts = s.split(':').collect::<Vec<_>>();
@@ -70,14 +82,21 @@ impl FromStr for Permission {
                     });
                 (resource, Some(reference), action)
             }
-            _ => return Err("invalid permission format"),
+            _ => {
+                return Err(PermissionParseError {
+                    message: format!("invalid permission format: '{}'", s),
+                });
+            }
         };
 
         Ok(Self {
-            resource: Resource::from_str(resource)
-                .map_err(|_| "invalid resource type")?,
+            resource: Resource::from_str(resource).map_err(|_| PermissionParseError {
+                message: format!("invalid resource type: '{}'", resource),
+            })?,
             resource_category,
-            action: Action::from_str(action).map_err(|_| "invalid action type")?,
+            action: Action::from_str(action).map_err(|_| PermissionParseError {
+                message: format!("invalid action type: '{}'", action),
+            })?,
         })
     }
 }

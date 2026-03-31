@@ -44,7 +44,7 @@ impl PermissionService {
             resource_type,
             resource_category,
             action,
-        }: PermissionInput,
+        }: PermissionInput<'_>,
     ) -> Result<()> {
         let txn = ctx.transaction();
 
@@ -92,7 +92,7 @@ impl PermissionService {
             resource_type,
             resource_category,
             action,
-        }: PermissionInput,
+        }: PermissionInput<'_>,
     ) -> Result<()> {
         let txn = ctx.transaction();
 
@@ -107,7 +107,7 @@ impl PermissionService {
         let make_error = || {
             Error::new(
                 format!(
-                    "failed to remove permission {}:{}:{} from role ID {}",
+                    "failed to remove permission '{}:{}:{}' from role ID {}",
                     resource_type,
                     resource_category_id.unwrap_or(0),
                     action,
@@ -147,6 +147,9 @@ impl PermissionService {
 
         let role_permissions = RolePermission::find()
             .filter(role_permission::Column::RoleId.eq(role_id))
+            .order_by_asc(role_permission::Column::ResourceType)
+            .order_by_asc(role_permission::Column::ResourceCategoryId)
+            .order_by_asc(role_permission::Column::Action)
             .all(txn)
             .await
             .or_raise(make_error)?;
@@ -218,7 +221,7 @@ impl PermissionService {
         };
 
         info!(
-            "Queried database for permission {}:{}:{}, found {} roles",
+            "Queried database for permission '{}:{}:{}', found {} roles",
             resource_type,
             resource_category_id.unwrap_or(0),
             action,
@@ -234,7 +237,7 @@ impl PermissionService {
             resource_type,
             resource_category,
             action,
-        }: PermissionInput,
+        }: PermissionInput<'_>,
     ) -> Result<bool> {
         let user_id = perm_ctx.user_id;
         let site_id = perm_ctx.site_id;
@@ -316,7 +319,7 @@ impl PermissionService {
                     info!("Permission cache miss, querying database directly");
 
                     // If cache miss, rebuild tree async
-                    let _ = PermissionCache::build_tree(ctx, site_id)
+                    let _ = PermissionCache::build_permission_cache(ctx, site_id)
                         .await
                         .or_raise(make_error);
 

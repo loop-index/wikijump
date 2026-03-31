@@ -33,10 +33,5 @@
         "description": "Can assign roles to users",
         "resource-type": "role",
         "action": "assign"
-    },
-    {
-        "description": "Can remove roles from users",
-        "resource-type": "role",
-        "action": "remove"
     }
 ]

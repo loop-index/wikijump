@@ -13,8 +13,7 @@
             "page:delete",
             "page:rename",
             "role:view",
-            "role:assign",
-            "role:remove"
+            "role:assign"
         ]
     },
     {
@@ -31,8 +30,7 @@
             "page:delete",
             "page:rename",
             "role:view",
-            "role:assign",
-            "role:remove"
+            "role:assign"
         ]
     },
     {

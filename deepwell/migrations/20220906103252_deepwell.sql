@@ -971,13 +971,13 @@ CREATE TABLE role (
     from_wikidot BOOLEAN NOT NULL DEFAULT false,
 
     -- Virtual roles are invisible to the user, granted by the system under specific conditions
-    -- i.e. Guest role granted when a non-member visits the site,
+    -- e.g. Guest role granted when a non-member visits the site,
     -- or Author role granted when a user interacts with a page they authored.
     -- Virtual roles are visible to admins where they can select the role's permissions.
     -- Virtual roles cannot be manually assigned.
     is_virtual BOOLEAN NOT NULL DEFAULT false,
 
-    -- System roles cannot be deleted (i.e. Admin)
+    -- System roles cannot be deleted (e.g. Admin)
     is_system BOOLEAN NOT NULL DEFAULT false,
 
     -- Rudimentary role hierarchy.
@@ -994,7 +994,7 @@ CREATE TABLE role (
 
 -- Role permissions (1-to-many)
 CREATE TABLE role_permission (
-    id BIGSERIAL PRIMARY KEY,
+    permission_id BIGSERIAL PRIMARY KEY,
     role_id BIGINT NOT NULL REFERENCES role(role_id),
     -- Denormalized to avoid a join when filtering permissions by site.
     site_id BIGINT NOT NULL REFERENCES site(site_id),
@@ -1010,7 +1010,7 @@ CREATE TABLE role_permission (
 CREATE TABLE user_role (
     user_id BIGINT NOT NULL REFERENCES "user"(user_id),
     role_id BIGINT NOT NULL REFERENCES role(role_id),
-    -- Denormalized FK to avoid a join.
+    -- Denormalized FK to avoid a join. (Remember, roles are tied to a specific site)
     site_id BIGINT NOT NULL REFERENCES site(site_id),
 
     assigned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),

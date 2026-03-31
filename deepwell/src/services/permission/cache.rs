@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -39,19 +40,14 @@ pub struct PermissionCache;
 impl PermissionCache {
     /// Build Redis cache key for a permission hash.
     fn key(site_id: i64, resource_type: &str, action: &str) -> String {
-        format!(
-            "perm:{}:{}:{}",
-            site_id,
-            resource_type.to_lowercase(),
-            action.to_lowercase()
-        )
+        format!("perm:{}:{}:{}", site_id, resource_type, action)
     }
 
     /// Build the field key within a permission hash for a specific category.
-    fn category_field(resource_category_id: Option<i64>) -> String {
+    fn category_field(resource_category_id: Option<i64>) -> Cow<'static, str> {
         resource_category_id
-            .map(|id| id.to_string())
-            .unwrap_or_else(|| DEFAULT_CATEGORY_KEY.to_string())
+            .map(|id| Cow::Owned(id.to_string()))
+            .unwrap_or_else(|| Cow::Borrowed(DEFAULT_CATEGORY_KEY))
     }
 
     /// Check if an action should be cached.
@@ -114,7 +110,10 @@ impl PermissionCache {
         }
     }
 
-    pub async fn build_tree(ctx: &ServiceContext<'_>, site_id: i64) -> Result<()> {
+    pub async fn build_permission_cache(
+        ctx: &ServiceContext<'_>,
+        site_id: i64,
+    ) -> Result<()> {
         let txn = ctx.transaction();
         let make_error =
             || Error::new("Error building permission cache", ErrorType::Permission);
