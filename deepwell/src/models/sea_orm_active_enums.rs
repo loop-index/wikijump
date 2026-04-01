@@ -2,6 +2,38 @@
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use strum_macros::{Display, EnumString};
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    EnumIter,
+    DeriveActiveEnum,
+    Copy,
+    Serialize,
+    Deserialize,
+    Hash,
+    EnumString,
+    Display,
+)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "action")]
+#[strum(serialize_all = "kebab_case", ascii_case_insensitive)]
+pub enum Action {
+    #[sea_orm(string_value = "view")]
+    View,
+    #[sea_orm(string_value = "edit")]
+    Edit,
+    #[sea_orm(string_value = "create")]
+    Create,
+    #[sea_orm(string_value = "delete")]
+    Delete,
+    #[sea_orm(string_value = "rename")]
+    Rename,
+    #[sea_orm(string_value = "assign")]
+    Assign,
+}
 
 #[derive(
     Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy, Serialize, Deserialize,
@@ -163,6 +195,30 @@ pub enum RelationObjectType {
     #[sea_orm(string_value = "file")]
     File,
 }
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    EnumIter,
+    DeriveActiveEnum,
+    Copy,
+    Serialize,
+    Deserialize,
+    Hash,
+    EnumString,
+    Display,
+)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "resource")]
+#[strum(serialize_all = "kebab_case", ascii_case_insensitive)]
+pub enum Resource {
+    #[sea_orm(string_value = "page")]
+    Page,
+    #[sea_orm(string_value = "role")]
+    Role,
+}
+
 #[derive(
     Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy, Serialize, Deserialize,
 )]

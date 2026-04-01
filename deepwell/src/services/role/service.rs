@@ -24,6 +24,7 @@ use crate::error::{Error, ErrorType};
 use crate::models::prelude::Page;
 use crate::models::role::{self, Entity as Role, Model as RoleModel};
 use crate::models::role_permission::{self, Entity as RolePermission};
+use crate::models::sea_orm_active_enums::{Action, Resource};
 use crate::models::user_role::{Entity as UserRole, Model as UserRoleModel};
 use crate::models::{page, user_role};
 use crate::services::audit::{AuditEvent, AuditService};
@@ -33,11 +34,10 @@ use crate::services::permission::{
 use crate::services::relation::{GetPageAttributions, GetSiteMember, SiteMemberAccepted};
 use crate::services::role::SystemRole;
 use crate::services::{PageService, RelationService, ServiceContext};
-use crate::types::{Action, Permission, Reference, Resource};
+use crate::types::{Permission, Reference};
 use crate::utils::{now, trim_default};
 use sea_orm::prelude::Expr;
 use std::net::IpAddr;
-use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct RoleService;
@@ -140,12 +140,10 @@ impl RoleService {
                 .await
                 .or_raise(make_error)?
                 .into_iter()
-                .filter_map(|perm| {
-                    Some(Permission {
-                        resource: Resource::from_str(&perm.resource_type).ok()?,
-                        resource_category: perm.resource_category_id.map(Reference::Id),
-                        action: Action::from_str(&perm.action).ok()?,
-                    })
+                .map(|perm| Permission {
+                    resource: perm.resource_type,
+                    resource_category: perm.resource_category_id.map(Reference::Id),
+                    action: perm.action,
                 })
                 .collect();
 
@@ -179,9 +177,9 @@ impl RoleService {
                     models.push(role_permission::ActiveModel {
                         role_id: Set(role.role_id),
                         site_id: Set(role.site_id),
-                        resource_type: Set(permission.resource.to_string()),
+                        resource_type: Set(permission.resource),
                         resource_category_id: Set(resource_category_id),
-                        action: Set(permission.action.to_string()),
+                        action: Set(permission.action),
                         ..Default::default()
                     });
                 }

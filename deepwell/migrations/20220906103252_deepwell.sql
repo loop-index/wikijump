@@ -960,6 +960,20 @@ CREATE INDEX forum_post_revision_lookup_idx ON forum_post_revision (forum_post_i
 -- Role / permission system
 --
 
+CREATE TYPE resource AS ENUM (
+    'page',
+    'role'
+);
+
+CREATE TYPE action AS ENUM (
+    'view',
+    'edit',
+    'create',
+    'delete',
+    'rename',
+    'assign'
+);
+
 -- Roles in a site.
 CREATE TABLE role (
     role_id BIGSERIAL PRIMARY KEY,
@@ -995,11 +1009,11 @@ CREATE TABLE role_permission (
     role_id BIGINT NOT NULL REFERENCES role(role_id),
     -- Denormalized to avoid a join when filtering permissions by site.
     site_id BIGINT NOT NULL REFERENCES site(site_id),
-    resource_type TEXT NOT NULL,
+    resource_type resource NOT NULL,
     -- Polymorphic reference to a resource category. For example, if the resource_type is "forum_category", then this references forum_category_id.
     -- NULL means the permission applies to all resources of the given type
     resource_category_id BIGINT,
-    action TEXT NOT NULL,
+    action action NOT NULL,
     UNIQUE (site_id, role_id, resource_type, resource_category_id, action)
 );
 

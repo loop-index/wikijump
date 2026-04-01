@@ -17,33 +17,12 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+use crate::models::sea_orm_active_enums::{Action, Resource};
 use crate::types::Reference;
+use sea_orm::{DeriveActiveEnum, EnumIter};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::str::FromStr;
-use strum_macros::{Display, EnumString};
-
-#[derive(
-    Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, Display, Serialize,
-)]
-#[strum(serialize_all = "kebab_case", ascii_case_insensitive)]
-pub enum Resource {
-    Page,
-    Role,
-}
-
-#[derive(
-    Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, Display, Serialize,
-)]
-#[strum(serialize_all = "kebab_case", ascii_case_insensitive)]
-pub enum Action {
-    View,
-    Edit,
-    Create,
-    Delete,
-    Rename,
-    Assign,
-}
 
 #[derive(Debug)]
 pub struct PermissionParseError {

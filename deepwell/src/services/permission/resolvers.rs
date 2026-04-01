@@ -19,8 +19,9 @@
  */
 
 use crate::error::Result;
+use crate::models::sea_orm_active_enums::{Action, Resource};
 use crate::services::ServiceContext;
-use crate::types::{Reference, Resource};
+use crate::types::Reference;
 
 /// Trait for resolving category references (ID or slug) to category IDs.
 ///

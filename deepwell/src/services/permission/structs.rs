@@ -18,7 +18,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::types::{Action, Reference, Resource};
+use crate::models::sea_orm_active_enums::{Action, Resource};
+use crate::types::Reference;
 
 #[derive(Debug, Clone)]
 pub struct PermissionInput<'a> {

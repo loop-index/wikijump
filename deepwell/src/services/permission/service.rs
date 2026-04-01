@@ -23,13 +23,14 @@ use crate::error::{Error, ErrorType};
 use crate::models::prelude::{Role, RolePermission};
 use crate::models::role_permission;
 use crate::models::role_permission::Model as RolePermissionModel;
+use crate::models::sea_orm_active_enums::{Action, Resource};
 use crate::models::{role, user_role};
 use crate::services::ServiceContext;
 use crate::services::permission::{
     CheckPermissionContext, PermissionCache, PermissionInput, resolve_category_reference,
 };
 use crate::services::role::{GetUserRolesInput, RoleService};
-use crate::types::{Action, Reference, Resource};
+use crate::types::Reference;
 
 #[derive(Debug)]
 pub struct PermissionService;
@@ -72,9 +73,9 @@ impl PermissionService {
         role_permission::ActiveModel {
             role_id: Set(role_id),
             site_id: Set(site_id),
-            resource_type: Set(resource_type.to_string()),
+            resource_type: Set(resource_type),
             resource_category_id: Set(resource_category_id),
-            action: Set(action.to_string()),
+            action: Set(action),
             ..Default::default()
         }
         .insert(txn)
@@ -120,9 +121,9 @@ impl PermissionService {
         role_permission::ActiveModel {
             role_id: Set(role_id),
             site_id: Set(site_id),
-            resource_type: Set(resource_type.to_string()),
+            resource_type: Set(resource_type),
             resource_category_id: Set(resource_category_id),
-            action: Set(action.to_string()),
+            action: Set(action),
             ..Default::default()
         }
         .delete(txn)
@@ -166,8 +167,6 @@ impl PermissionService {
         action: Action,
     ) -> Result<Vec<i64>> {
         let txn = ctx.transaction();
-        let resource_str = resource.to_string();
-        let action_str = action.to_string();
 
         let category_condition = match resource_category_id {
             Some(id) => role_permission::Column::ResourceCategoryId.eq(id),
@@ -176,9 +175,9 @@ impl PermissionService {
 
         Ok(RolePermission::find()
             .filter(role_permission::Column::SiteId.eq(site_id))
-            .filter(role_permission::Column::ResourceType.eq(&resource_str))
+            .filter(role_permission::Column::ResourceType.eq(resource))
             .filter(category_condition)
-            .filter(role_permission::Column::Action.eq(&action_str))
+            .filter(role_permission::Column::Action.eq(action))
             .all(txn)
             .await
             .or_raise(|| Error::new("Error querying permissions", ErrorType::Permission))?
