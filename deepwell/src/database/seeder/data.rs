@@ -258,7 +258,6 @@ pub struct Role {
     pub name: String,
     pub description: String,
     pub is_virtual: bool,
-    pub is_system: bool,
     pub level: i32,
     pub permissions: Vec<String>,
 }

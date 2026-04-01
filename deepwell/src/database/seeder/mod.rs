@@ -504,7 +504,6 @@ pub async fn seed(state: &ServerState) -> Result<()> {
                     name: role_template.name.clone(),
                     description: Some(role_template.description.clone()),
                     is_virtual: role_template.is_virtual,
-                    is_system: role_template.is_system,
                     level: role_template.level,
                 },
                 SEED_IP_ADDRESS,

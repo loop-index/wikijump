@@ -977,9 +977,6 @@ CREATE TABLE role (
     -- Virtual roles cannot be manually assigned.
     is_virtual BOOLEAN NOT NULL DEFAULT false,
 
-    -- System roles cannot be deleted (e.g. Admin)
-    is_system BOOLEAN NOT NULL DEFAULT false,
-
     -- Rudimentary role hierarchy.
     -- Roles with higher level are granted more permissions than roles with lower levels.
     -- Users with role management permissions can only grant roles with lower levels and affect users of lower levels.

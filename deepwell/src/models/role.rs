@@ -15,7 +15,6 @@ pub struct Model {
     pub description: String,
     pub from_wikidot: bool,
     pub is_virtual: bool,
-    pub is_system: bool,
     pub level: i32,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: TimeDateTimeWithTimeZone,

@@ -51,7 +51,6 @@ impl RoleService {
             name,
             description,
             is_virtual,
-            is_system,
             level,
         }: CreateRoleInput,
         ip_address: IpAddr,
@@ -73,7 +72,6 @@ impl RoleService {
             name: Set(name.clone()),
             description: Set(description.clone().unwrap_or_default()),
             is_virtual: Set(is_virtual),
-            is_system: Set(is_system),
             level: Set(level),
             created_at: Set(now),
             ..Default::default()
