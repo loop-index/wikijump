@@ -140,12 +140,12 @@ impl RoleService {
                 .await
                 .or_raise(make_error)?
                 .into_iter()
-                .filter_map(|perm| {
-                    Some(Permission {
-                        resource: Resource::from_str(&perm.resource_type).ok()?,
+                .map(|perm| {
+                    Permission {
+                        resource: perm.resource_type,
                         resource_category: perm.resource_category_id.map(Reference::Id),
-                        action: Action::from_str(&perm.action).ok()?,
-                    })
+                        action: perm.action,
+                    }
                 })
                 .collect();
 
@@ -179,9 +179,9 @@ impl RoleService {
                     models.push(role_permission::ActiveModel {
                         role_id: Set(role.role_id),
                         site_id: Set(role.site_id),
-                        resource_type: Set(permission.resource.to_string()),
+                        resource_type: Set(permission.resource),
                         resource_category_id: Set(resource_category_id),
-                        action: Set(permission.action.to_string()),
+                        action: Set(permission.action),
                         ..Default::default()
                     });
                 }

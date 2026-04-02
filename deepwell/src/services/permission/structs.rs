@@ -32,8 +32,8 @@ pub struct PermissionInput<'a> {
 pub struct PermissionOutput {
     pub permission_id: i64,
     pub description: String,
-    pub resource_type: String,
-    pub action: String,
+    pub resource_type: Resource,
+    pub action: Action,
 }
 
 /// Context for permission checks.

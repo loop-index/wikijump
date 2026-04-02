@@ -20,7 +20,6 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use super::prelude::*;
 use crate::error::{Error, ErrorType};
@@ -39,7 +38,7 @@ pub struct PermissionCache;
 #[allow(dead_code)]
 impl PermissionCache {
     /// Build Redis cache key for a permission hash.
-    fn key(site_id: i64, resource_type: &str, action: &str) -> String {
+    fn key(site_id: i64, resource_type: Resource, action: Action) -> String {
         format!("perm:{}:{}:{}", site_id, resource_type, action)
     }
 
@@ -69,10 +68,7 @@ impl PermissionCache {
     ) -> Result<Option<Vec<i64>>> {
         let mut redis = ctx.redis();
 
-        let resource_str = resource_type.to_string();
-        let action_str = action.to_string();
-
-        let key = Self::key(site_id, &resource_str, &action_str);
+        let key = Self::key(site_id, resource_type, action);
         let field = Self::category_field(resource_category_id);
         let default_field = Self::category_field(None);
 
@@ -124,27 +120,20 @@ impl PermissionCache {
             .await
             .or_raise(make_error)?;
 
-        let mut cache_map: HashMap<(String, Option<i64>, String), Vec<i64>> =
+        let mut cache_map: HashMap<(Resource, Option<i64>, Action), Vec<i64>> =
             HashMap::new();
         for perm in all_permissions {
-            if !Self::is_cacheable(
-                Resource::from_str(&perm.resource_type).or_raise(make_error)?,
-                Action::from_str(&perm.action).or_raise(make_error)?,
-            ) {
+            if !Self::is_cacheable(perm.resource_type, perm.action) {
                 continue;
             }
 
-            let key = (
-                perm.resource_type.clone(),
-                perm.resource_category_id,
-                perm.action.clone(),
-            );
+            let key = (perm.resource_type, perm.resource_category_id, perm.action);
             cache_map.entry(key).or_default().push(perm.role_id);
         }
 
         let mut redis = ctx.redis();
         for ((resource_type, resource_category_id, action), role_ids) in cache_map {
-            let key = Self::key(site_id, &resource_type, &action);
+            let key = Self::key(site_id, resource_type, action);
             let field = Self::category_field(resource_category_id);
             let value = role_ids
                 .iter()
