@@ -24,12 +24,13 @@ use crate::error::prelude::*;
 use crate::locales::Localizations;
 use crate::models::session::Model as SessionModel;
 use crate::services::blob::MimeAnalyzer;
-use crate::services::permission::PermissionService;
+use crate::services::permission::{GetRolesAndPermissionsOutput, PermissionService};
 use crate::types::{Permission, Reference};
 use redis::aio::MultiplexedConnection as RedisMultiplexedConnection;
 use rsmq_async::Rsmq;
 use s3::bucket::Bucket;
 use sea_orm::DatabaseTransaction;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
@@ -41,6 +42,7 @@ pub struct RequestContext {
     pub user_id: Option<i64>,
     pub site_id: Option<i64>,
     pub page_reference: Option<Reference<'static>>,
+    pub ip_address: Option<Cow<'static, str>>,
 }
 
 impl RequestContext {
@@ -73,6 +75,16 @@ impl RequestContext {
         self.page_reference.as_ref().ok_or_raise(|| {
             Error::new(
                 "Page reference not present in request context",
+                ErrorType::Request,
+            )
+        })
+    }
+
+    #[inline]
+    pub fn ip_address(&self) -> Result<&str> {
+        self.ip_address.as_deref().ok_or_raise(|| {
+            Error::new(
+                "IP address not present in request context",
                 ErrorType::Request,
             )
         })
@@ -177,7 +189,10 @@ impl<'txn> ServiceContext<'txn> {
                 let site_id = self.request_ctx.site_id()?;
                 let page_reference = self.request_ctx.page_reference.clone();
 
-                PermissionService::get_permissions_for_user(
+                let GetRolesAndPermissionsOutput {
+                    roles: _,
+                    permissions,
+                } = PermissionService::get_permissions_for_user(
                     self,
                     user_id,
                     site_id,
@@ -186,7 +201,9 @@ impl<'txn> ServiceContext<'txn> {
                 .await
                 .or_raise(|| {
                     Error::new("Failed to fetch user permissions", ErrorType::Permission)
-                })
+                })?;
+
+                Ok(permissions)
             })
             .await
     }

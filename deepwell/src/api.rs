@@ -480,5 +480,6 @@ async fn build_request(
         user_id,
         site_id: headers.site_id,
         page_reference: headers.page_ref.clone(),
+        ip_address: headers.ip_address.clone(),
     })
 }

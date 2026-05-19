@@ -413,7 +413,8 @@ impl PermissionService {
         let user_permissions =
             Self::get_permissions_for_user(ctx, user_id, site_id, page_reference)
                 .await
-                .or_raise(make_error)?;
+                .or_raise(make_error)?
+                .permissions;
 
         // Short-circuit: no permissions.
         if user_permissions.is_empty() {
@@ -587,7 +588,7 @@ impl PermissionService {
         user_id: Option<i64>,
         site_id: i64,
         page_reference: Option<Reference<'_>>,
-    ) -> Result<HashSet<Permission<'static>>> {
+    ) -> Result<GetRolesAndPermissionsOutput> {
         let txn = ctx.transaction();
         let make_error = || {
             Error::new(
@@ -599,7 +600,7 @@ impl PermissionService {
             )
         };
 
-        let role_ids: Vec<i64> = RoleService::get_all_roles_for_user_and_site(
+        let roles = RoleService::get_all_roles_for_user_and_site(
             ctx,
             GetUserRolesInput {
                 user_id,
@@ -608,12 +609,11 @@ impl PermissionService {
             },
         )
         .await
-        .or_raise(make_error)?
-        .into_iter()
-        .map(|r| r.role_id)
-        .collect();
+        .or_raise(make_error)?;
 
-        Ok(RolePermission::find()
+        let role_ids: Vec<i64> = roles.iter().map(|r| r.role_id).collect();
+
+        let permission_set = RolePermission::find()
             .filter(role_permission::Column::RoleId.is_in(role_ids))
             .all(txn)
             .await
@@ -624,7 +624,12 @@ impl PermissionService {
                 resource_category: p.resource_category_id.map(Reference::Id),
                 action: p.action,
             })
-            .collect())
+            .collect();
+
+        Ok(GetRolesAndPermissionsOutput {
+            roles,
+            permissions: permission_set,
+        })
     }
 
     async fn check_category_scoped(

@@ -49,6 +49,7 @@ async fn basic_edit() {
         user_id: Some(ADMIN_USER_ID),
         site_id: Some(site_id),
         page_reference: Some(Reference::Slug(PAGE_SLUG.into())),
+        ..Default::default()
     });
 
     // Create page
@@ -202,6 +203,7 @@ async fn basic_move() {
         user_id: Some(ADMIN_USER_ID),
         site_id: Some(site_id),
         page_reference: Some(Reference::Slug(PAGE_SLUG_1.into())),
+        ..Default::default()
     });
 
     // Create page
@@ -309,6 +311,7 @@ async fn basic_move() {
         user_id: Some(ADMIN_USER_ID),
         site_id: Some(site_id),
         page_reference: Some(Reference::Slug(PAGE_SLUG_2.into())),
+        ..Default::default()
     });
 
     let output = run_endpoint!(

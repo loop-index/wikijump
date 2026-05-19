@@ -28,6 +28,9 @@ async function processRawRequest(
   if (reqContext?.page) {
     headers["X-Deepwell-Page"] = reqContext.page.toString()
   }
+  if (reqContext?.ipAddress) {
+    headers["X-Deepwell-IP-Address"] = reqContext.ipAddress
+  }
 
   const response = await fetch(DEEPWELL_URL, {
     method: "POST",

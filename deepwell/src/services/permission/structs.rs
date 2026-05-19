@@ -18,6 +18,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+use std::collections::HashSet;
+
+use crate::models::role::Model as RoleModel;
 use crate::types::{Action, Permission, Reference, Resource};
 
 #[derive(Serialize, Debug, Clone)]
@@ -37,4 +40,10 @@ pub struct CheckPermissionContext<'a> {
     pub user_id: Option<i64>,
     pub site_id: i64,
     pub page_reference: Option<Reference<'a>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct GetRolesAndPermissionsOutput {
+    pub roles: Vec<RoleModel>,
+    pub permissions: HashSet<Permission<'static>>,
 }

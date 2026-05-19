@@ -31,6 +31,7 @@ pub struct RequestContextHeaders {
     pub session_token: Option<String>,
     pub site_id: Option<i64>,
     pub page_ref: Option<Reference<'static>>,
+    pub ip_address: Option<Cow<'static, str>>,
 }
 
 /// tower middleware layer to extract relevant headers from the request
@@ -85,11 +86,17 @@ where
                     .map(Reference::Id)
                     .unwrap_or_else(|_| Reference::Slug(Cow::Owned(s.to_owned())))
             });
+        let ip_address: Option<Cow<'static, str>> = request
+            .headers()
+            .get("X-Deepwell-IP-Address")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| Cow::Owned(s.to_owned()));
 
         let context = RequestContextHeaders {
             session_token,
             site_id,
             page_ref,
+            ip_address,
         };
         request.extensions_mut().insert(context);
         self.service.call(request)
