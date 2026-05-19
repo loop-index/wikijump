@@ -202,6 +202,11 @@ export enum Layout {
   WIKIDOT = "wikidot",
   WIKIJUMP = "wikijump"
 }
+export enum PageLockType {
+  Wikidot = "wikidot",
+  PermissionOnly = "permission-only",
+  AuthorOnly = "author-only"
+}
 export enum PagePane {
   None = "none",
   File = "file",
@@ -210,7 +215,8 @@ export enum PagePane {
   Move = "move",
   Parent = "parent",
   Vote = "vote",
-  Delete = "delete"
+  Delete = "delete",
+  Lock = "lock"
 }
 export enum UserType {
   Regular = "regular",

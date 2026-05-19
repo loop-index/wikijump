@@ -391,6 +391,12 @@ export interface Locales {
   "wiki-page-file-restore": string
   "wiki-page-file-restore.new-page": string
   "wiki-page-file-restore.new-name": string
+  "wiki-page-lock": string
+  "wiki-page-lock.permission-only": string
+  "wiki-page-lock.author-only": string
+  "wiki-page-lock.reason": string
+  "wiki-page-lock.expires-at": string
+  "wiki-page-lock.override": string
   "wiki-page-parent": string
   "wiki-page-missing": string
   "wiki-page-private": string

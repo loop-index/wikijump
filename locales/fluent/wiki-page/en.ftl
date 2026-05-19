@@ -95,6 +95,15 @@ wiki-page-file-restore = Restore
   .new-page = Destination page
   .new-name = New file name
 
+### Wiki page lock
+
+wiki-page-lock = Lock Page
+  .permission-only = Only members with permission can edit.
+  .author-only = Members with permission and page authors can edit.
+  .reason = Reason (optional)
+  .expires-at = (Optional) Set a date when this lock will be automatically removed:
+  .override = Override existing lock
+
 ### Wiki page parents
 
 wiki-page-parent = Page parents

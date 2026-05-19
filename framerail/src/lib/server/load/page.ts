@@ -8,6 +8,7 @@ import {
   pageEditPermission,
   pageHistory,
   pageLayout,
+  pageLockCreate,
   pageMove,
   pageParentGet,
   pageParentUpdate,
@@ -32,12 +33,13 @@ import {
 import { translate } from "$lib/server/deepwell/translate"
 import { pageView } from "$lib/server/deepwell/views"
 import { loadSiteInfo } from "$lib/server/load/site-info"
-import { type DeepwellError, DeleteOptions, Layout } from "$lib/types"
+import { type DeepwellError, DeleteOptions, Layout, PageLockType } from "$lib/types"
 import { error, redirect } from "@sveltejs/kit"
 import { fail, superValidate, withFiles } from "sveltekit-superforms"
 import { valibot } from "sveltekit-superforms/adapters"
 import {
   array,
+  boolean,
   file,
   literal,
   nullable,
@@ -197,6 +199,12 @@ export async function loadPage(
       "wiki-page-edit": {},
       "wiki-page-parent": {},
       "wiki-page-delete": {},
+      "wiki-page-lock": {},
+      "wiki-page-lock.permission-only": {},
+      "wiki-page-lock.author-only": {},
+      "wiki-page-lock.reason": {},
+      "wiki-page-lock.expires-at": {},
+      "wiki-page-lock.override": {},
       "wiki-page-move": {},
       "wiki-page-move.new-slug": {},
       "wiki-page-no-render": {},
@@ -231,6 +239,7 @@ export async function loadPage(
     layoutForm: await superValidate(request, valibot(layoutSchema)),
     pageMoveForm: await superValidate(request, valibot(pageMoveSchema)),
     pageParentForm: await superValidate(request, valibot(pageParentSchema)),
+    pageLockForm: await superValidate(request, valibot(pageLockSchema)),
     // added here for type checking
     pageRestoreForm: await superValidate(request, valibot(pageRestoreSchema))
   }
@@ -1114,4 +1123,46 @@ export async function pageRestoreAction({
 const pageRestoreSchema = object({
   ...baseSchema,
   comments: string()
+})
+
+/* ----- Page Lock Create ----- */
+export async function pageLockCreateAction({
+  request,
+  getClientAddress,
+  locals
+}: RequestEvent) {
+  const form = await superValidate(request, valibot(pageLockSchema))
+  if (!form.valid) {
+    return fail(400, { form })
+  }
+
+  const ipAddress = getClientAddress()
+
+  try {
+    const { lockType, reason, expiresAt, overrideExisting } = form.data
+    await pageLockCreate(
+      lockType,
+      reason,
+      expiresAt,
+      overrideExisting,
+      ipAddress,
+      getRequestContext(locals)
+    )
+    return { form }
+  } catch (e) {
+    const error = e as DeepwellError
+    return fail(500, {
+      form,
+      message: error.message,
+      code: error.code,
+      data: error.data
+    })
+  }
+}
+
+const pageLockSchema = object({
+  lockType: vEnum(PageLockType),
+  reason: string(),
+  expiresAt: optional(string()),
+  overrideExisting: optional(boolean(), true)
 })
